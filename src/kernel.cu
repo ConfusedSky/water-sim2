@@ -26,6 +26,9 @@ constexpr int kMaxNeighbors = 64;
 constexpr int kThreadsPerBlock = 128;
 constexpr int kSolverIterations = 4;
 constexpr float kPi = 3.14159265358979323846f;
+constexpr int kMouseButtonNone = 0;
+constexpr int kMouseButtonDrag = 1;
+constexpr int kMouseButtonPush = 2;
 
 struct SimParams {
     float2 box_min;
@@ -145,6 +148,37 @@ __global__ void apply_external_forces_kernel(float2* vel, int n, float dt) {
         return;
     }
     vel[i].y += c_params.gravity * dt;
+}
+
+__global__ void apply_mouse_force_kernel(const float2* pos, float2* vel, int n,
+                                         float dt, MouseState mouse) {
+    if (mouse.button_state == kMouseButtonNone || mouse.radius <= 1.0e-6f ||
+        mouse.strength <= 0.0f) {
+        return;
+    }
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) {
+        return;
+    }
+
+    float2 delta = pos[i] - mouse.pos;
+    float dist = length1(delta);
+    if (dist >= mouse.radius) {
+        return;
+    }
+
+    float falloff = 1.0f - dist / mouse.radius;
+    float2 impulse = make_float2(0.0f, 0.0f);
+
+    if (mouse.button_state == kMouseButtonDrag) {
+        impulse = mouse.vel * (mouse.strength * falloff * dt);
+    } else if (mouse.button_state == kMouseButtonPush && dist > 1.0e-5f) {
+        float2 radial = delta / dist;
+        impulse = radial * (mouse.strength * falloff * dt);
+    }
+
+    vel[i] = vel[i] + impulse;
 }
 
 __global__ void predict_positions_kernel(const float2* pos, const float2* vel,
@@ -534,7 +568,7 @@ SimulationStats get_simulation_stats() {
     return g_last_stats;
 }
 
-void step_simulation(float dt, float4* render_particles) {
+void step_simulation(float dt, const MouseState& mouse, float4* render_particles) {
     if (!g_initialized) {
         init_simulation();
     }
@@ -543,6 +577,9 @@ void step_simulation(float dt, float4* render_particles) {
 
     apply_external_forces_kernel<<<blocks, kThreadsPerBlock>>>(g_vel, kParticleCount,
                                                                dt);
+    apply_mouse_force_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_vel,
+                                                           kParticleCount, dt,
+                                                           mouse);
     predict_positions_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_vel, g_predicted,
                                                            kParticleCount, dt);
     enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_predicted, g_vel,

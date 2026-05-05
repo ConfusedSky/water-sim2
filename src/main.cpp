@@ -4,6 +4,9 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -15,6 +18,9 @@
 
 constexpr float kFixedDt = 1.0f / 240.0f;
 constexpr int kMaxSubsteps = 16;
+constexpr int kMouseButtonNone = 0;
+constexpr int kMouseButtonDrag = 1;
+constexpr int kMouseButtonPush = 2;
 
 #define CUDA_CHECK(call)                                                       \
     do {                                                                       \
@@ -81,6 +87,92 @@ static GLuint link_program(GLuint vs, GLuint fs) {
     return p;
 }
 
+struct MouseController {
+    double cursor_x = 0.0;
+    double cursor_y = 0.0;
+    bool has_cursor = false;
+    bool left_down = false;
+    bool right_down = false;
+    float radius = 0.14f;
+    float strength = 12.0f;
+    float2 prev_world = make_float2(0.0f, 0.0f);
+    bool has_prev_world = false;
+};
+
+static void cursor_position_callback(GLFWwindow* window, double x, double y) {
+    auto* mouse = static_cast<MouseController*>(glfwGetWindowUserPointer(window));
+    if (!mouse) {
+        return;
+    }
+    mouse->cursor_x = x;
+    mouse->cursor_y = y;
+    mouse->has_cursor = true;
+}
+
+static void mouse_button_callback(GLFWwindow* window, int button, int action,
+                                  int /*mods*/) {
+    auto* mouse = static_cast<MouseController*>(glfwGetWindowUserPointer(window));
+    if (!mouse) {
+        return;
+    }
+
+    bool down = action != GLFW_RELEASE;
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        mouse->left_down = down;
+    } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        mouse->right_down = down;
+    }
+}
+
+static float2 screen_to_world(double x, double y, int width, int height) {
+    if (width <= 0 || height <= 0) {
+        return make_float2(0.0f, 0.0f);
+    }
+
+    float ndc_x = static_cast<float>((x / static_cast<double>(width)) * 2.0 - 1.0);
+    float ndc_y =
+        static_cast<float>(1.0 - (y / static_cast<double>(height)) * 2.0);
+    const glm::mat4 projection(1.0f);
+    const glm::mat4 inv_projection = glm::inverse(projection);
+    glm::vec4 world = inv_projection * glm::vec4(ndc_x, ndc_y, 0.0f, 1.0f);
+    return make_float2(world.x / world.w, world.y / world.w);
+}
+
+static MouseState build_mouse_state(MouseController& mouse, int width, int height,
+                                    float frame_dt, bool capture_mouse) {
+    MouseState state{};
+    state.radius = mouse.radius;
+    state.strength = mouse.strength;
+    state.button_state = kMouseButtonNone;
+
+    if (!mouse.has_cursor) {
+        mouse.has_prev_world = false;
+        return state;
+    }
+
+    float2 world = screen_to_world(mouse.cursor_x, mouse.cursor_y, width, height);
+    float2 world_vel = make_float2(0.0f, 0.0f);
+    if (mouse.has_prev_world && frame_dt > 1.0e-6f) {
+        world_vel = make_float2((world.x - mouse.prev_world.x) / frame_dt,
+                                (world.y - mouse.prev_world.y) / frame_dt);
+    }
+
+    mouse.prev_world = world;
+    mouse.has_prev_world = true;
+    state.pos = world;
+    state.vel = world_vel;
+
+    if (!capture_mouse) {
+        if (mouse.right_down) {
+            state.button_state = kMouseButtonPush;
+        } else if (mouse.left_down) {
+            state.button_state = kMouseButtonDrag;
+        }
+    }
+
+    return state;
+}
+
 int main() {
     glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
     if (!glfwInit()) {
@@ -91,7 +183,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 1", nullptr, nullptr);
+    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 2", nullptr, nullptr);
     if (!win) {
         std::fprintf(stderr, "glfwCreateWindow failed\n");
         glfwTerminate();
@@ -99,6 +191,11 @@ int main() {
     }
     glfwMakeContextCurrent(win);
     glfwSwapInterval(1);
+
+    MouseController mouse{};
+    glfwSetWindowUserPointer(win, &mouse);
+    glfwSetCursorPosCallback(win, cursor_position_callback);
+    glfwSetMouseButtonCallback(win, mouse_button_callback);
 
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
@@ -152,6 +249,10 @@ int main() {
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
 
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         double now = glfwGetTime();
         double frame_dt = now - last_time;
         last_time = now;
@@ -160,21 +261,25 @@ int main() {
         }
         accumulator += frame_dt;
 
+        int w = 0, h = 0;
+        glfwGetFramebufferSize(win, &w, &h);
+        MouseState sim_mouse =
+            build_mouse_state(mouse, w, h, static_cast<float>(frame_dt),
+                              ImGui::GetIO().WantCaptureMouse);
+
         float4* dptr = nullptr;
         size_t bytes = 0;
         CUDA_CHECK(cudaGraphicsMapResources(1, &cuda_vbo, 0));
         CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&dptr), &bytes, cuda_vbo));
         int substeps = 0;
         while (accumulator >= kFixedDt && substeps < kMaxSubsteps) {
-            step_simulation(kFixedDt, dptr);
+            step_simulation(kFixedDt, sim_mouse, dptr);
             accumulator -= kFixedDt;
             ++substeps;
         }
         CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuda_vbo, 0));
         stats = get_simulation_stats();
 
-        int w = 0, h = 0;
-        glfwGetFramebufferSize(win, &w, &h);
         glViewport(0, 0, w, h);
         glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -184,9 +289,6 @@ int main() {
         glDrawArrays(GL_POINTS, 0, particle_count);
         glBindVertexArray(0);
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
         {
             ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
             ImGui::Begin("stats", nullptr,
@@ -202,6 +304,11 @@ int main() {
             ImGui::Text("Avg density: %.2f", stats.avg_density);
             ImGui::Text("Max density: %.2f", stats.max_density);
             ImGui::Text("Avg speed: %.3f", stats.avg_speed);
+            ImGui::Separator();
+            ImGui::Text("Left drag: pull fluid");
+            ImGui::Text("Right drag: push fluid");
+            ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 0.30f);
+            ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 32.0f);
             if (ImGui::Button("Reset")) {
                 reset_simulation();
                 accumulator = kFixedDt;
