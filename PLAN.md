@@ -52,11 +52,12 @@
 **Done when:** clicking and dragging visibly pushes the fluid around.
 
 ## Phase 3 — Spatial hash for neighbor search
-- Uniform grid, cell size = 2×kernel radius
+- Uniform grid, cell size = kernel radius (so the influence neighborhood of any particle fits inside the 3×3 block of cells around it)
 - Per-particle cell hash kernel
-- `thrust::sort_by_key` to sort particles by cell hash
+- `thrust::sort_by_key` to sort particle indices by cell hash (positions/velocities stay in place; the sort produces a particle-index map per cell)
 - Cell-start / cell-end index arrays via boundary detection kernel
 - Replace naive neighbor search with 9-cell (2D) lookup
+- Keep an A/B toggle (naive vs grid) in the ImGui panel during phase 3 so densities can be visually cross-checked, then drop the naive code once parity is established
 - Target: 50k–100k particles at 60 FPS
 
 **Done when:** particle count is 25× higher with no frame-rate hit.

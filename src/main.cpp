@@ -361,6 +361,13 @@ int main() {
             if (changed) {
                 set_tunable_params(tp);
             }
+
+            ImGui::Separator();
+            bool use_grid = get_use_spatial_hash();
+            if (ImGui::Checkbox("spatial-hash neighbors", &use_grid)) {
+                set_use_spatial_hash(use_grid);
+            }
+            ImGui::TextDisabled("(off = naive O(n^2))");
             ImGui::End();
         }
 

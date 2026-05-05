@@ -1,8 +1,11 @@
 #include "kernel.cuh"
 
 #include <cuda_runtime.h>
+#include <thrust/execution_policy.h>
+#include <thrust/sort.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -27,6 +30,7 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr int kMouseButtonNone = 0;
 constexpr int kMouseButtonDrag = 1;
 constexpr int kMouseButtonPush = 2;
+constexpr float kMinCellSize = 0.01f;
 
 struct SimParams {
   float2 box_min;
@@ -44,6 +48,9 @@ struct SimParams {
   float max_position_correction;
   float max_speed;
   int solver_iterations;
+  float cell_size;
+  int grid_w;
+  int grid_h;
 };
 
 struct DeviceStats {
@@ -63,12 +70,18 @@ float *g_lambda = nullptr;
 float *g_density = nullptr;
 int *g_neighbors = nullptr;
 int *g_neighbor_counts = nullptr;
+int *g_cell_hash = nullptr;
+int *g_particle_index = nullptr;
+int *g_cell_start = nullptr;
+int *g_cell_end = nullptr;
+int g_max_cells = 0;
 DeviceStats *g_stats = nullptr;
 
 bool g_initialized = false;
 SimulationStats g_last_stats{};
 std::vector<float2> g_initial_positions;
 SceneId g_active_scene = SceneId::ColumnLeft;
+bool g_use_spatial_hash = true;
 
 __host__ __device__ inline float2 operator+(float2 a, float2 b) {
   return make_float2(a.x + b.x, a.y + b.y);
@@ -91,6 +104,18 @@ __device__ inline float dot2(float2 a, float2 b) {
 }
 
 __device__ inline float length2(float2 v) { return dot2(v, v); }
+
+__device__ inline int2 cell_coords_for(float2 p) {
+  int cx = static_cast<int>(floorf((p.x - c_params.box_min.x) / c_params.cell_size));
+  int cy = static_cast<int>(floorf((p.y - c_params.box_min.y) / c_params.cell_size));
+  cx = max(0, min(cx, c_params.grid_w - 1));
+  cy = max(0, min(cy, c_params.grid_h - 1));
+  return make_int2(cx, cy);
+}
+
+__device__ inline int cell_index_for(int2 c) {
+  return c.y * c_params.grid_w + c.x;
+}
 
 __device__ inline float length1(float2 v) { return sqrtf(length2(v)); }
 
@@ -209,6 +234,85 @@ __global__ void find_neighbors_naive_kernel(const float2 *positions,
     if (count < kMaxNeighbors) {
       neighbors[i * kMaxNeighbors + count] = j;
       ++count;
+    }
+  }
+
+  neighbor_counts[i] = count;
+}
+
+__global__ void compute_cell_hash_kernel(const float2 *positions, int *cell_hash,
+                                         int *particle_index, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) {
+    return;
+  }
+  cell_hash[i] = cell_index_for(cell_coords_for(positions[i]));
+  particle_index[i] = i;
+}
+
+__global__ void find_cell_starts_kernel(const int *cell_hash_sorted,
+                                        int *cell_start, int *cell_end, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) {
+    return;
+  }
+  int hash_i = cell_hash_sorted[i];
+  if (i == 0) {
+    cell_start[hash_i] = 0;
+  } else {
+    int hash_prev = cell_hash_sorted[i - 1];
+    if (hash_prev != hash_i) {
+      cell_start[hash_i] = i;
+      cell_end[hash_prev] = i;
+    }
+  }
+  if (i == n - 1) {
+    cell_end[hash_i] = n;
+  }
+}
+
+__global__ void find_neighbors_grid_kernel(const float2 *positions,
+                                           const int *particle_index,
+                                           const int *cell_start,
+                                           const int *cell_end, int *neighbors,
+                                           int *neighbor_counts, int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) {
+    return;
+  }
+
+  float2 pi = positions[i];
+  int2 c = cell_coords_for(pi);
+  float h2 = c_params.kernel_radius * c_params.kernel_radius;
+  int count = 0;
+
+  for (int dy = -1; dy <= 1; ++dy) {
+    int ny = c.y + dy;
+    if (ny < 0 || ny >= c_params.grid_h) {
+      continue;
+    }
+    for (int dx = -1; dx <= 1; ++dx) {
+      int nx = c.x + dx;
+      if (nx < 0 || nx >= c_params.grid_w) {
+        continue;
+      }
+      int hash = ny * c_params.grid_w + nx;
+      int start = cell_start[hash];
+      int end = cell_end[hash];
+      for (int idx = start; idx < end; ++idx) {
+        int j = particle_index[idx];
+        if (j == i) {
+          continue;
+        }
+        float2 delta = pi - positions[j];
+        if (length2(delta) >= h2) {
+          continue;
+        }
+        if (count < kMaxNeighbors) {
+          neighbors[i * kMaxNeighbors + count] = j;
+          ++count;
+        }
+      }
     }
   }
 
@@ -378,6 +482,15 @@ __global__ void export_render_particles_kernel(const float2 *pos,
       make_float4(pos[i].x, pos[i].y, density[i] / c_params.rest_density, 1.0f);
 }
 
+void compute_grid_dims(SimParams &p) {
+  float cs = std::max(p.kernel_radius, kMinCellSize);
+  p.cell_size = cs;
+  p.grid_w = std::max(
+      1, static_cast<int>(std::ceil((p.box_max.x - p.box_min.x) / cs)));
+  p.grid_h = std::max(
+      1, static_cast<int>(std::ceil((p.box_max.y - p.box_min.y) / cs)));
+}
+
 void allocate_simulation_buffers() {
   CUDA_CHECK(cudaMalloc(&g_pos, kParticleCount * sizeof(float2)));
   CUDA_CHECK(cudaMalloc(&g_vel, kParticleCount * sizeof(float2)));
@@ -388,6 +501,19 @@ void allocate_simulation_buffers() {
   CUDA_CHECK(
       cudaMalloc(&g_neighbors, kParticleCount * kMaxNeighbors * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&g_neighbor_counts, kParticleCount * sizeof(int)));
+  CUDA_CHECK(cudaMalloc(&g_cell_hash, kParticleCount * sizeof(int)));
+  CUDA_CHECK(cudaMalloc(&g_particle_index, kParticleCount * sizeof(int)));
+
+  int max_grid_w = std::max(
+      1, static_cast<int>(
+             std::ceil((g_params.box_max.x - g_params.box_min.x) / kMinCellSize)));
+  int max_grid_h = std::max(
+      1, static_cast<int>(
+             std::ceil((g_params.box_max.y - g_params.box_min.y) / kMinCellSize)));
+  g_max_cells = max_grid_w * max_grid_h;
+  CUDA_CHECK(cudaMalloc(&g_cell_start, g_max_cells * sizeof(int)));
+  CUDA_CHECK(cudaMalloc(&g_cell_end, g_max_cells * sizeof(int)));
+
   CUDA_CHECK(cudaMalloc(&g_stats, sizeof(DeviceStats)));
 }
 
@@ -446,6 +572,7 @@ void upload_params() {
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 2.75f;
   g_params.solver_iterations = kSolverIterations;
+  compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
 
@@ -517,6 +644,10 @@ void shutdown_simulation() {
   CUDA_CHECK(cudaFree(g_density));
   CUDA_CHECK(cudaFree(g_neighbors));
   CUDA_CHECK(cudaFree(g_neighbor_counts));
+  CUDA_CHECK(cudaFree(g_cell_hash));
+  CUDA_CHECK(cudaFree(g_particle_index));
+  CUDA_CHECK(cudaFree(g_cell_start));
+  CUDA_CHECK(cudaFree(g_cell_end));
   CUDA_CHECK(cudaFree(g_stats));
 
   g_pos = nullptr;
@@ -527,6 +658,11 @@ void shutdown_simulation() {
   g_density = nullptr;
   g_neighbors = nullptr;
   g_neighbor_counts = nullptr;
+  g_cell_hash = nullptr;
+  g_particle_index = nullptr;
+  g_cell_start = nullptr;
+  g_cell_end = nullptr;
+  g_max_cells = 0;
   g_stats = nullptr;
   g_initial_positions.clear();
   g_initialized = false;
@@ -576,8 +712,13 @@ void set_tunable_params(const TunableParams &params) {
       std::max(0.0f, std::min(params.velocity_damping, 1.0f));
   g_params.boundary_bounce =
       std::max(0.0f, std::min(params.boundary_bounce, 1.0f));
+  compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
+
+bool get_use_spatial_hash() { return g_use_spatial_hash; }
+
+void set_use_spatial_hash(bool enabled) { g_use_spatial_hash = enabled; }
 
 SimulationStats get_simulation_stats() {
   if (!g_initialized) {
@@ -610,9 +751,25 @@ void step_simulation(float dt, const MouseState &mouse,
   enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_predicted, g_vel,
                                                             kParticleCount, 0);
 
+  int num_cells = g_params.grid_w * g_params.grid_h;
+
   for (int iter = 0; iter < g_params.solver_iterations; ++iter) {
-    find_neighbors_naive_kernel<<<blocks, kThreadsPerBlock>>>(
-        g_predicted, g_neighbors, g_neighbor_counts, kParticleCount);
+    if (g_use_spatial_hash) {
+      compute_cell_hash_kernel<<<blocks, kThreadsPerBlock>>>(
+          g_predicted, g_cell_hash, g_particle_index, kParticleCount);
+      thrust::sort_by_key(thrust::device, g_cell_hash,
+                          g_cell_hash + kParticleCount, g_particle_index);
+      CUDA_CHECK(cudaMemset(g_cell_start, 0, num_cells * sizeof(int)));
+      CUDA_CHECK(cudaMemset(g_cell_end, 0, num_cells * sizeof(int)));
+      find_cell_starts_kernel<<<blocks, kThreadsPerBlock>>>(
+          g_cell_hash, g_cell_start, g_cell_end, kParticleCount);
+      find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+          g_predicted, g_particle_index, g_cell_start, g_cell_end, g_neighbors,
+          g_neighbor_counts, kParticleCount);
+    } else {
+      find_neighbors_naive_kernel<<<blocks, kThreadsPerBlock>>>(
+          g_predicted, g_neighbors, g_neighbor_counts, kParticleCount);
+    }
     compute_lambda_kernel<<<blocks, kThreadsPerBlock>>>(
         g_predicted, g_neighbors, g_neighbor_counts, g_lambda, g_density,
         kParticleCount);
