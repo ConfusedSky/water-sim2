@@ -106,8 +106,10 @@ __device__ inline float dot2(float2 a, float2 b) {
 __device__ inline float length2(float2 v) { return dot2(v, v); }
 
 __device__ inline int2 cell_coords_for(float2 p) {
-  int cx = static_cast<int>(floorf((p.x - c_params.box_min.x) / c_params.cell_size));
-  int cy = static_cast<int>(floorf((p.y - c_params.box_min.y) / c_params.cell_size));
+  int cx =
+      static_cast<int>(floorf((p.x - c_params.box_min.x) / c_params.cell_size));
+  int cy =
+      static_cast<int>(floorf((p.y - c_params.box_min.y) / c_params.cell_size));
   cx = max(0, min(cx, c_params.grid_w - 1));
   cy = max(0, min(cy, c_params.grid_h - 1));
   return make_int2(cx, cy);
@@ -240,8 +242,9 @@ __global__ void find_neighbors_naive_kernel(const float2 *positions,
   neighbor_counts[i] = count;
 }
 
-__global__ void compute_cell_hash_kernel(const float2 *positions, int *cell_hash,
-                                         int *particle_index, int n) {
+__global__ void compute_cell_hash_kernel(const float2 *positions,
+                                         int *cell_hash, int *particle_index,
+                                         int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) {
     return;
@@ -545,11 +548,11 @@ void allocate_simulation_buffers() {
   CUDA_CHECK(cudaMalloc(&g_particle_index, kParticleCount * sizeof(int)));
 
   int max_grid_w = std::max(
-      1, static_cast<int>(
-             std::ceil((g_params.box_max.x - g_params.box_min.x) / kMinCellSize)));
+      1, static_cast<int>(std::ceil((g_params.box_max.x - g_params.box_min.x) /
+                                    kMinCellSize)));
   int max_grid_h = std::max(
-      1, static_cast<int>(
-             std::ceil((g_params.box_max.y - g_params.box_min.y) / kMinCellSize)));
+      1, static_cast<int>(std::ceil((g_params.box_max.y - g_params.box_min.y) /
+                                    kMinCellSize)));
   g_max_cells = max_grid_w * max_grid_h;
   CUDA_CHECK(cudaMalloc(&g_cell_start, g_max_cells * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&g_cell_end, g_max_cells * sizeof(int)));
@@ -573,8 +576,15 @@ float host_poly6_weight(float2 delta, float kernel_radius) {
 }
 
 float estimate_rest_density(float kernel_radius) {
-  std::vector<float> densities(kParticleCount, 0.0f);
-  for (int i = 0; i < kParticleCount; ++i) {
+  constexpr int kMaxSamples = 2048;
+  int sample_count = std::min(kParticleCount, kMaxSamples);
+  int stride = std::max(1, kParticleCount / sample_count);
+
+  std::vector<float> densities;
+  densities.reserve(sample_count);
+  for (int i = 0;
+       i < kParticleCount && static_cast<int>(densities.size()) < sample_count;
+       i += stride) {
     float rho = host_poly6_weight(make_float2(0.0f, 0.0f), kernel_radius);
     for (int j = 0; j < kParticleCount; ++j) {
       if (i == j) {
@@ -583,16 +593,17 @@ float estimate_rest_density(float kernel_radius) {
       rho += host_poly6_weight(g_initial_positions[i] - g_initial_positions[j],
                                kernel_radius);
     }
-    densities[i] = rho;
+    densities.push_back(rho);
   }
 
   std::sort(densities.begin(), densities.end());
-  int start = (kParticleCount * 3) / 4;
+  int taken = static_cast<int>(densities.size());
+  int start = (taken * 3) / 4;
   float sum = 0.0f;
-  for (int i = start; i < kParticleCount; ++i) {
+  for (int i = start; i < taken; ++i) {
     sum += densities[i];
   }
-  return sum / static_cast<float>(kParticleCount - start);
+  return sum / static_cast<float>(taken - start);
 }
 
 void upload_params() {
@@ -619,8 +630,8 @@ void upload_params() {
 void rebuild_spatial_grid(const float2 *positions, int blocks, int num_cells) {
   compute_cell_hash_kernel<<<blocks, kThreadsPerBlock>>>(
       positions, g_cell_hash, g_particle_index, kParticleCount);
-  thrust::sort_by_key(thrust::device, g_cell_hash,
-                      g_cell_hash + kParticleCount, g_particle_index);
+  thrust::sort_by_key(thrust::device, g_cell_hash, g_cell_hash + kParticleCount,
+                      g_particle_index);
   CUDA_CHECK(cudaMemset(g_cell_start, 0, num_cells * sizeof(int)));
   CUDA_CHECK(cudaMemset(g_cell_end, 0, num_cells * sizeof(int)));
   find_cell_starts_kernel<<<blocks, kThreadsPerBlock>>>(
@@ -635,8 +646,8 @@ void launch_density_and_stats_passes(int blocks) {
         g_pos, g_particle_index, g_cell_start, g_cell_end, g_density,
         kParticleCount);
   } else {
-    compute_density_only_kernel<<<blocks, kThreadsPerBlock>>>(
-        g_pos, g_density, kParticleCount);
+    compute_density_only_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_density,
+                                                              kParticleCount);
   }
   CUDA_CHECK(cudaMemset(g_stats, 0, sizeof(DeviceStats)));
   gather_stats_kernel<<<blocks, kThreadsPerBlock>>>(g_density, g_vel, g_stats,
