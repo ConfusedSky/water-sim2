@@ -361,7 +361,7 @@ int main() {
             ImGui::Text("Left drag: pull fluid");
             ImGui::Text("Right drag: push fluid");
             ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 1.0f);
-            ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 1000.0f);
+            ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 200.0f);
 
             int scene_idx = static_cast<int>(get_active_scene());
             const char* scene_items[kSceneCount] = {
