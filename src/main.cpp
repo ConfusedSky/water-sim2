@@ -655,8 +655,8 @@ int main() {
             float avg_sim = 0.0f, max_sim = 0.0f;
             float avg_render = 0.0f, max_render = 0.0f;
             frame_window.summarize(avg_sim, max_sim, avg_render, max_render);
-            ImGui::Text("Sim    1s avg/max: %.2f / %.2f ms", avg_sim, max_sim);
-            ImGui::Text("Render 1s avg/max: %.2f / %.2f ms", avg_render, max_render);
+            ImGui::Text("Sim    avg/max: %.2f / %.2f ms", avg_sim, max_sim);
+            ImGui::Text("Render avg/max: %.2f / %.2f ms", avg_render, max_render);
             ImGui::Text("Avg density: %.2f", stats.avg_density);
             ImGui::Text("Max density: %.2f", stats.max_density);
             ImGui::Text("Avg speed: %.3f", stats.avg_speed);
@@ -715,6 +715,8 @@ int main() {
                                          0.0f, 0.0f, "%.3f");
             changed |= ImGui::InputFloat("viscosity_c (XSPH)", &tp.viscosity_c,
                                          0.0f, 0.0f, "%.6f");
+            changed |= ImGui::InputFloat("vorticity_eps", &tp.vorticity_eps,
+                                         0.0f, 0.0f, "%.6f");
             changed |= ImGui::InputFloat("max speed", &tp.max_speed, 0.0f, 0.0f,
                                          "%.3f");
             changed |= ImGui::InputFloat("max pos correction",
@@ -724,13 +726,6 @@ int main() {
             if (changed) {
                 set_tunable_params(tp);
             }
-
-            ImGui::Separator();
-            bool use_grid = get_use_spatial_hash();
-            if (ImGui::Checkbox("spatial-hash neighbors", &use_grid)) {
-                set_use_spatial_hash(use_grid);
-            }
-            ImGui::TextDisabled("(off = naive O(n^2))");
 
             ImGui::Separator();
             ImGui::Text("surface render");

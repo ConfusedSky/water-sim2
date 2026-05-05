@@ -30,6 +30,7 @@ struct TunableParams {
     float velocity_damping;
     float boundary_bounce;
     float viscosity_c;
+    float vorticity_eps;
     float max_speed;
     float max_position_correction;
 };
@@ -47,8 +48,5 @@ void set_tunable_params(const TunableParams& params);
 
 SceneId get_active_scene();
 void set_active_scene(SceneId id);
-
-bool get_use_spatial_hash();
-void set_use_spatial_hash(bool enabled);
 
 void step_simulation(float dt, const MouseState& mouse, float4* render_particles);

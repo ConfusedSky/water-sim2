@@ -48,6 +48,7 @@ struct SimParams {
   float max_position_correction;
   float max_speed;
   float viscosity_c;
+  float vorticity_eps;
   int solver_iterations;
   float cell_size;
   int grid_w;
@@ -70,6 +71,7 @@ float2 *g_predicted = nullptr;
 float2 *g_delta_p = nullptr;
 float *g_lambda = nullptr;
 float *g_density = nullptr;
+float *g_vorticity = nullptr;
 int *g_neighbors = nullptr;
 int *g_neighbor_counts = nullptr;
 int *g_cell_hash = nullptr;
@@ -83,7 +85,6 @@ bool g_initialized = false;
 SimulationStats g_last_stats{};
 std::vector<float2> g_initial_positions;
 SceneId g_active_scene = SceneId::ColumnLeft;
-bool g_use_spatial_hash = true;
 
 __host__ __device__ inline float2 operator+(float2 a, float2 b) {
   return make_float2(a.x + b.x, a.y + b.y);
@@ -155,18 +156,6 @@ __device__ inline float2 spiky_gradient(float2 delta) {
   return delta * scale;
 }
 
-__device__ inline float compute_density_at(const float2 *positions, int i) {
-  float density = poly6_weight(make_float2(0.0f, 0.0f));
-  float2 pi = positions[i];
-  for (int j = 0; j < kParticleCount; ++j) {
-    if (i == j) {
-      continue;
-    }
-    density += poly6_weight(pi - positions[j]);
-  }
-  return density;
-}
-
 __global__ void apply_external_forces_kernel(float2 *vel, int n, float dt) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) {
@@ -213,35 +202,6 @@ __global__ void predict_positions_kernel(const float2 *pos, const float2 *vel,
     return;
   }
   predicted[i] = pos[i] + vel[i] * dt;
-}
-
-__global__ void find_neighbors_naive_kernel(const float2 *positions,
-                                            int *neighbors,
-                                            int *neighbor_counts, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= n) {
-    return;
-  }
-
-  int count = 0;
-  float2 pi = positions[i];
-  float h2 = c_params.kernel_radius * c_params.kernel_radius;
-
-  for (int j = 0; j < n; ++j) {
-    if (i == j) {
-      continue;
-    }
-    float2 delta = pi - positions[j];
-    if (length2(delta) >= h2) {
-      continue;
-    }
-    if (count < kMaxNeighbors) {
-      neighbors[i * kMaxNeighbors + count] = j;
-      ++count;
-    }
-  }
-
-  neighbor_counts[i] = count;
 }
 
 __global__ void compute_cell_hash_kernel(const float2 *positions,
@@ -411,31 +371,99 @@ __global__ void apply_xsph_viscosity_grid_kernel(const float2 *positions,
   vel_out[i] = vi + accum * c_params.viscosity_c;
 }
 
-__global__ void apply_xsph_viscosity_naive_kernel(const float2 *positions,
-                                                  const float2 *vel_in,
-                                                  float2 *vel_out, int n) {
+__global__ void compute_vorticity_grid_kernel(const float2 *positions,
+                                              const float2 *vel,
+                                              float *vorticity,
+                                              const int *particle_index,
+                                              const int *cell_start,
+                                              const int *cell_end, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n) {
     return;
   }
 
   float2 pi = positions[i];
-  float2 vi = vel_in[i];
-  float2 accum = make_float2(0.0f, 0.0f);
+  float2 vi = vel[i];
+  int2 c = cell_coords_for(pi);
+  float omega = 0.0f;
 
-  for (int j = 0; j < n; ++j) {
-    if (i == j) {
+  for (int dy = -1; dy <= 1; ++dy) {
+    int ny = c.y + dy;
+    if (ny < 0 || ny >= c_params.grid_h) {
       continue;
     }
-    float w = poly6_weight(pi - positions[j]);
-    if (w <= 0.0f) {
-      continue;
+    for (int dx = -1; dx <= 1; ++dx) {
+      int nx = c.x + dx;
+      if (nx < 0 || nx >= c_params.grid_w) {
+        continue;
+      }
+      int hash = ny * c_params.grid_w + nx;
+      int start = cell_start[hash];
+      int end = cell_end[hash];
+      for (int idx = start; idx < end; ++idx) {
+        int j = particle_index[idx];
+        if (j == i) {
+          continue;
+        }
+        float2 grad = spiky_gradient(pi - positions[j]);
+        if (grad.x == 0.0f && grad.y == 0.0f) {
+          continue;
+        }
+        float2 dv = vel[j] - vi;
+        omega += dv.x * grad.y - dv.y * grad.x;
+      }
     }
-    float2 dv = vel_in[j] - vi;
-    accum = accum + dv * w;
+  }
+  vorticity[i] = omega;
+}
+
+__global__ void apply_vorticity_force_grid_kernel(
+    const float2 *positions, const float *vorticity, float2 *vel,
+    const int *particle_index, const int *cell_start, const int *cell_end,
+    int n, float dt) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) {
+    return;
   }
 
-  vel_out[i] = vi + accum * c_params.viscosity_c;
+  float2 pi = positions[i];
+  int2 c = cell_coords_for(pi);
+  float2 eta = make_float2(0.0f, 0.0f);
+
+  for (int dy = -1; dy <= 1; ++dy) {
+    int ny = c.y + dy;
+    if (ny < 0 || ny >= c_params.grid_h) {
+      continue;
+    }
+    for (int dx = -1; dx <= 1; ++dx) {
+      int nx = c.x + dx;
+      if (nx < 0 || nx >= c_params.grid_w) {
+        continue;
+      }
+      int hash = ny * c_params.grid_w + nx;
+      int start = cell_start[hash];
+      int end = cell_end[hash];
+      for (int idx = start; idx < end; ++idx) {
+        int j = particle_index[idx];
+        if (j == i) {
+          continue;
+        }
+        float2 grad = spiky_gradient(pi - positions[j]);
+        eta = eta + grad * fabsf(vorticity[j]);
+      }
+    }
+  }
+
+  float eta_len2 = dot2(eta, eta);
+  if (eta_len2 < 1.0e-10f) {
+    return;
+  }
+  float eta_len = sqrtf(eta_len2);
+  float2 N = eta / eta_len;
+  float omega_i = vorticity[i];
+  float2 f_vort =
+      make_float2(N.y * omega_i, -N.x * omega_i) * c_params.vorticity_eps;
+  vel[i] = vel[i] + f_vort * dt;
 }
 
 __global__ void compute_lambda_kernel(const float2 *positions,
@@ -566,15 +594,6 @@ __global__ void enforce_box_boundary_kernel(float2 *pos, float2 *vel, int n,
   vel[i] = v;
 }
 
-__global__ void compute_density_only_kernel(const float2 *positions,
-                                            float *density, int n) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= n) {
-    return;
-  }
-  density[i] = compute_density_at(positions, i);
-}
-
 __global__ void gather_stats_kernel(const float *density, const float2 *vel,
                                     DeviceStats *stats, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -618,6 +637,7 @@ void allocate_simulation_buffers() {
   CUDA_CHECK(cudaMalloc(&g_delta_p, kParticleCount * sizeof(float2)));
   CUDA_CHECK(cudaMalloc(&g_lambda, kParticleCount * sizeof(float)));
   CUDA_CHECK(cudaMalloc(&g_density, kParticleCount * sizeof(float)));
+  CUDA_CHECK(cudaMalloc(&g_vorticity, kParticleCount * sizeof(float)));
   CUDA_CHECK(
       cudaMalloc(&g_neighbors, kParticleCount * kMaxNeighbors * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&g_neighbor_counts, kParticleCount * sizeof(int)));
@@ -698,6 +718,7 @@ void upload_params() {
   g_params.velocity_damping = 0.9996f;
   g_params.boundary_bounce = 0.2f;
   g_params.viscosity_c = 0.000025f;
+  g_params.vorticity_eps = 0.0001f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 100.0f;
   g_params.solver_iterations = kSolverIterations;
@@ -716,34 +737,31 @@ void rebuild_spatial_grid(const float2 *positions, int blocks, int num_cells) {
       g_cell_hash, g_cell_start, g_cell_end, kParticleCount);
 }
 
-void run_post_step_passes(int blocks) {
-  if (g_use_spatial_hash) {
-    int num_cells = g_params.grid_w * g_params.grid_h;
-    rebuild_spatial_grid(g_pos, blocks, num_cells);
+void run_post_step_passes(int blocks, float dt) {
+  int num_cells = g_params.grid_w * g_params.grid_h;
+  rebuild_spatial_grid(g_pos, blocks, num_cells);
+
+  if (g_params.vorticity_eps > 0.0f) {
+    compute_vorticity_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_vel, g_vorticity, g_particle_index, g_cell_start, g_cell_end,
+        kParticleCount);
+    apply_vorticity_force_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_vorticity, g_vel, g_particle_index, g_cell_start, g_cell_end,
+        kParticleCount, dt);
   }
 
   if (g_params.viscosity_c > 0.0f) {
     CUDA_CHECK(cudaMemcpyAsync(g_vel_scratch, g_vel,
                                kParticleCount * sizeof(float2),
                                cudaMemcpyDeviceToDevice));
-    if (g_use_spatial_hash) {
-      apply_xsph_viscosity_grid_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_pos, g_vel_scratch, g_vel, g_particle_index, g_cell_start,
-          g_cell_end, kParticleCount);
-    } else {
-      apply_xsph_viscosity_naive_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_pos, g_vel_scratch, g_vel, kParticleCount);
-    }
+    apply_xsph_viscosity_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_vel_scratch, g_vel, g_particle_index, g_cell_start, g_cell_end,
+        kParticleCount);
   }
 
-  if (g_use_spatial_hash) {
-    compute_density_grid_kernel<<<blocks, kThreadsPerBlock>>>(
-        g_pos, g_particle_index, g_cell_start, g_cell_end, g_density,
-        kParticleCount);
-  } else {
-    compute_density_only_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_density,
-                                                              kParticleCount);
-  }
+  compute_density_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+      g_pos, g_particle_index, g_cell_start, g_cell_end, g_density,
+      kParticleCount);
   CUDA_CHECK(cudaMemset(g_stats, 0, sizeof(DeviceStats)));
   gather_stats_kernel<<<blocks, kThreadsPerBlock>>>(g_density, g_vel, g_stats,
                                                     kParticleCount);
@@ -789,6 +807,7 @@ void reset_simulation() {
   CUDA_CHECK(cudaMemset(g_delta_p, 0, kParticleCount * sizeof(float2)));
   CUDA_CHECK(cudaMemset(g_lambda, 0, kParticleCount * sizeof(float)));
   CUDA_CHECK(cudaMemset(g_density, 0, kParticleCount * sizeof(float)));
+  CUDA_CHECK(cudaMemset(g_vorticity, 0, kParticleCount * sizeof(float)));
   CUDA_CHECK(cudaMemset(g_neighbor_counts, 0, kParticleCount * sizeof(int)));
   CUDA_CHECK(
       cudaMemset(g_neighbors, 0, kParticleCount * kMaxNeighbors * sizeof(int)));
@@ -808,6 +827,7 @@ void shutdown_simulation() {
   CUDA_CHECK(cudaFree(g_delta_p));
   CUDA_CHECK(cudaFree(g_lambda));
   CUDA_CHECK(cudaFree(g_density));
+  CUDA_CHECK(cudaFree(g_vorticity));
   CUDA_CHECK(cudaFree(g_neighbors));
   CUDA_CHECK(cudaFree(g_neighbor_counts));
   CUDA_CHECK(cudaFree(g_cell_hash));
@@ -823,6 +843,7 @@ void shutdown_simulation() {
   g_delta_p = nullptr;
   g_lambda = nullptr;
   g_density = nullptr;
+  g_vorticity = nullptr;
   g_neighbors = nullptr;
   g_neighbor_counts = nullptr;
   g_cell_hash = nullptr;
@@ -863,6 +884,7 @@ TunableParams get_tunable_params() {
   t.velocity_damping = g_params.velocity_damping;
   t.boundary_bounce = g_params.boundary_bounce;
   t.viscosity_c = g_params.viscosity_c;
+  t.vorticity_eps = g_params.vorticity_eps;
   t.max_speed = g_params.max_speed;
   t.max_position_correction = g_params.max_position_correction;
   return t;
@@ -883,16 +905,13 @@ void set_tunable_params(const TunableParams &params) {
   g_params.boundary_bounce =
       std::max(0.0f, std::min(params.boundary_bounce, 1.0f));
   g_params.viscosity_c = std::max(params.viscosity_c, 0.0f);
+  g_params.vorticity_eps = std::max(params.vorticity_eps, 0.0f);
   g_params.max_speed = std::max(params.max_speed, 1.0e-3f);
   g_params.max_position_correction =
       std::max(params.max_position_correction, 1.0e-5f);
   compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
-
-bool get_use_spatial_hash() { return g_use_spatial_hash; }
-
-void set_use_spatial_hash(bool enabled) { g_use_spatial_hash = enabled; }
 
 SimulationStats get_simulation_stats() {
   if (!g_initialized) {
@@ -928,15 +947,10 @@ void step_simulation(float dt, const MouseState &mouse,
   int num_cells = g_params.grid_w * g_params.grid_h;
 
   for (int iter = 0; iter < g_params.solver_iterations; ++iter) {
-    if (g_use_spatial_hash) {
-      rebuild_spatial_grid(g_predicted, blocks, num_cells);
-      find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_predicted, g_particle_index, g_cell_start, g_cell_end, g_neighbors,
-          g_neighbor_counts, kParticleCount);
-    } else {
-      find_neighbors_naive_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_predicted, g_neighbors, g_neighbor_counts, kParticleCount);
-    }
+    rebuild_spatial_grid(g_predicted, blocks, num_cells);
+    find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_predicted, g_particle_index, g_cell_start, g_cell_end, g_neighbors,
+        g_neighbor_counts, kParticleCount);
     compute_lambda_kernel<<<blocks, kThreadsPerBlock>>>(
         g_predicted, g_neighbors, g_neighbor_counts, g_lambda, g_density,
         kParticleCount);
@@ -954,7 +968,7 @@ void step_simulation(float dt, const MouseState &mouse,
   enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_vel,
                                                             kParticleCount, 1);
 
-  run_post_step_passes(blocks);
+  run_post_step_passes(blocks, dt);
   export_render_particles_kernel<<<blocks, kThreadsPerBlock>>>(
       g_pos, g_density, render_particles, kParticleCount);
   CUDA_CHECK(cudaGetLastError());
