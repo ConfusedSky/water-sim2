@@ -54,6 +54,7 @@ constexpr int kMaxSubsteps = 16;
 constexpr int kMouseButtonNone = 0;
 constexpr int kMouseButtonDrag = 1;
 constexpr int kMouseButtonPush = 2;
+constexpr float kParticleRadiusWorld = 0.0075f;
 
 #define CUDA_CHECK(call)                                                       \
     do {                                                                       \
@@ -91,24 +92,26 @@ void main() {
 }
 )";
 
-static const char* SURFACE_SPLAT_VS = R"(#version 450 core
+static const char* SURFACE_SEED_VS = R"(#version 450 core
 layout(location = 0) in vec4 in_particle;
 uniform float u_world_scale_inv;
-uniform float u_splat_size_px;
+uniform float u_seed_radius_px;
+out vec2 v_seed_uv;
 void main() {
-    gl_Position = vec4(in_particle.xy * u_world_scale_inv, 0.0, 1.0);
-    gl_PointSize = u_splat_size_px;
+    vec2 ndc = in_particle.xy * u_world_scale_inv;
+    gl_Position = vec4(ndc, 0.0, 1.0);
+    v_seed_uv = ndc * 0.5 + 0.5;
+    gl_PointSize = u_seed_radius_px;
 }
 )";
 
-static const char* SURFACE_SPLAT_FS = R"(#version 450 core
+static const char* SURFACE_SEED_FS = R"(#version 450 core
+in vec2 v_seed_uv;
 out vec4 frag;
 void main() {
     vec2 c = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(c, c);
-    if (r2 > 1.0) discard;
-    float w = exp(-r2 * 3.0);
-    frag = vec4(w, 0.0, 0.0, 0.0);
+    if (dot(c, c) > 1.0) discard;
+    frag = vec4(v_seed_uv, 0.0, 0.0);
 }
 )";
 
@@ -121,68 +124,72 @@ void main() {
 }
 )";
 
-static const char* SURFACE_BLUR_FS = R"(#version 450 core
+static const char* SURFACE_JFA_FS = R"(#version 450 core
 in vec2 v_uv;
 uniform sampler2D u_tex;
 uniform vec2 u_step;
 out vec4 frag;
 void main() {
-    float w0 = 0.227027;
-    float w1 = 0.194595;
-    float w2 = 0.121622;
-    float w3 = 0.054054;
-    float w4 = 0.016216;
-    float c = texture(u_tex, v_uv).r * w0;
-    c += texture(u_tex, v_uv + u_step * 1.0).r * w1;
-    c += texture(u_tex, v_uv - u_step * 1.0).r * w1;
-    c += texture(u_tex, v_uv + u_step * 2.0).r * w2;
-    c += texture(u_tex, v_uv - u_step * 2.0).r * w2;
-    c += texture(u_tex, v_uv + u_step * 3.0).r * w3;
-    c += texture(u_tex, v_uv - u_step * 3.0).r * w3;
-    c += texture(u_tex, v_uv + u_step * 4.0).r * w4;
-    c += texture(u_tex, v_uv - u_step * 4.0).r * w4;
-    frag = vec4(c, 0.0, 0.0, 0.0);
+    vec2 best = texture(u_tex, v_uv).rg;
+    float best_d2 = dot(v_uv - best, v_uv - best);
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            if (dx == 0 && dy == 0) continue;
+            vec2 nb_uv = v_uv + vec2(float(dx), float(dy)) * u_step;
+            vec2 nb_seed = texture(u_tex, nb_uv).rg;
+            float d2 = dot(v_uv - nb_seed, v_uv - nb_seed);
+            if (d2 < best_d2) { best_d2 = d2; best = nb_seed; }
+        }
+    }
+    frag = vec4(best, 0.0, 0.0);
 }
 )";
 
 static const char* SURFACE_SHADE_FS = R"(#version 450 core
 in vec2 v_uv;
-uniform sampler2D u_density;
-uniform float u_threshold;
+uniform sampler2D u_seed_tex;
+uniform float u_surface_radius;
 uniform float u_smooth_width;
+uniform float u_rim_width;
+uniform float u_normal_strength;
 uniform vec3 u_base_color;
 uniform vec3 u_highlight_color;
-uniform float u_normal_strength;
-uniform float u_rim_width_px;
+uniform float u_refraction_strength;
+uniform float u_checker_scale;
+uniform vec3 u_checker_color_a;
+uniform vec3 u_checker_color_b;
+uniform float u_water_opacity;
 out vec4 frag;
+vec3 checkerboard(vec2 uv) {
+    vec2 p = floor(uv * u_checker_scale);
+    return mix(u_checker_color_a, u_checker_color_b, mod(p.x + p.y, 2.0));
+}
 void main() {
-    float d = texture(u_density, v_uv).r;
-    float a = smoothstep(u_threshold - u_smooth_width,
-                         u_threshold + u_smooth_width, d);
-    if (a <= 0.001) discard;
-    vec2 ts = 1.0 / vec2(textureSize(u_density, 0));
-    float dx = texture(u_density, v_uv + vec2(ts.x, 0.0)).r
-             - texture(u_density, v_uv - vec2(ts.x, 0.0)).r;
-    float dy = texture(u_density, v_uv + vec2(0.0, ts.y)).r
-             - texture(u_density, v_uv - vec2(0.0, ts.y)).r;
-    vec2 grad = vec2(dx, dy);
-    float gmag = length(grad);
-    vec2 dir = (gmag > 1.0e-6) ? grad / gmag : vec2(0.0);
-    float iso_dist_px = (gmag > 1.0e-6)
-        ? abs(d - u_threshold) / gmag
-        : 1.0e6;
-    float rim_mask = smoothstep(u_rim_width_px, 0.0, iso_dist_px);
-    float tilt = clamp(u_normal_strength, 0.0, 0.95) * rim_mask;
-    vec3 n = vec3(-dir * tilt, sqrt(max(1.0 - tilt * tilt, 0.0)));
-    vec3 light = normalize(vec3(0.35, 0.55, 0.80));
-    float diff = max(dot(n, light), 0.0);
-    vec3 H = normalize(light + vec3(0.0, 0.0, 1.0));
-    float spec = pow(max(dot(n, H), 0.0), 48.0);
-    float fresnel = pow(1.0 - max(n.z, 0.0), 3.0);
-    vec3 col = mix(u_base_color, u_highlight_color,
-                   diff * 0.45 + fresnel * 0.55);
-    col += vec3(1.0) * spec * 0.7;
-    frag = vec4(col, a);
+    vec2 nearest = texture(u_seed_tex, v_uv).rg;
+    float dist   = length(v_uv - nearest);
+    float a      = smoothstep(u_surface_radius + u_smooth_width,
+                              u_surface_radius - u_smooth_width, dist);
+    // Exact unit normal from the SDF — zero finite-difference noise
+    vec2 outward = (dist > 1.0e-6) ? (v_uv - nearest) / dist : vec2(0.0, 1.0);
+    // rim_t: 1 at the surface boundary, 0 deeper inside
+    float rim_t  = 1.0 - clamp((u_surface_radius - dist) / max(u_rim_width, 1.0e-6),
+                                0.0, 1.0);
+    float tilt   = clamp(u_normal_strength, 0.0, 0.95) * rim_t;
+    vec3  n      = vec3(outward * tilt, sqrt(max(1.0 - tilt * tilt, 0.0)));
+    // Refraction: bend inward (convex-lens effect), strongest at rim
+    vec2 refracted_uv = clamp(v_uv - outward * rim_t * u_refraction_strength, 0.0, 1.0);
+    vec3 bg          = checkerboard(v_uv);
+    vec3 bg_refracted = checkerboard(refracted_uv);
+    if (a <= 0.001) { frag = vec4(bg, 1.0); return; }
+    vec3 light  = normalize(vec3(0.35, 0.55, 0.80));
+    float diff  = max(dot(n, light), 0.0);
+    vec3  H     = normalize(light + vec3(0.0, 0.0, 1.0));
+    float spec  = pow(max(dot(n, H), 0.0), 48.0);
+    float fres  = pow(1.0 - max(n.z, 0.0), 3.0);
+    vec3 water  = mix(u_base_color, u_highlight_color, diff * 0.45 + fres * 0.55);
+    vec3 col    = mix(bg_refracted, water, u_water_opacity);
+    col        += vec3(1.0) * spec * 0.7;
+    frag = vec4(mix(bg, col, a), 1.0);
 }
 )";
 
@@ -218,50 +225,59 @@ static GLuint link_program(GLuint vs, GLuint fs) {
 }
 
 struct SurfaceRenderer {
-    GLuint splat_prog = 0;
-    GLuint blur_prog = 0;
+    GLuint seed_prog = 0;
+    GLuint jfa_prog  = 0;
     GLuint shade_prog = 0;
-    GLuint density_fbo = 0;
-    GLuint density_tex = 0;
-    GLuint blur_fbo[2] = {0, 0};
-    GLuint blur_tex[2] = {0, 0};
+    GLuint seed_fbo = 0;
+    GLuint seed_tex = 0;
+    GLuint jfa_fbo[2] = {0, 0};
+    GLuint jfa_tex[2] = {0, 0};
     GLuint dummy_vao = 0;
     int fbo_w = 0;
     int fbo_h = 0;
 
-    GLint splat_world_scale_loc = -1;
-    GLint splat_size_loc = -1;
-    GLint blur_step_loc = -1;
-    GLint blur_tex_loc = -1;
-    GLint shade_density_loc = -1;
-    GLint shade_threshold_loc = -1;
-    GLint shade_smooth_loc = -1;
-    GLint shade_base_loc = -1;
-    GLint shade_highlight_loc = -1;
-    GLint shade_normal_strength_loc = -1;
-    GLint shade_rim_width_loc = -1;
+    GLint seed_world_scale_loc  = -1;
+    GLint seed_radius_px_loc    = -1;
+    GLint jfa_step_loc          = -1;
+    GLint jfa_tex_loc           = -1;
+    GLint shade_seed_tex_loc          = -1;
+    GLint shade_surface_radius_loc    = -1;
+    GLint shade_smooth_loc            = -1;
+    GLint shade_rim_width_loc         = -1;
+    GLint shade_normal_strength_loc   = -1;
+    GLint shade_base_loc              = -1;
+    GLint shade_highlight_loc         = -1;
+    GLint shade_refraction_strength_loc = -1;
+    GLint shade_checker_scale_loc     = -1;
+    GLint shade_checker_color_a_loc   = -1;
+    GLint shade_checker_color_b_loc   = -1;
+    GLint shade_water_opacity_loc     = -1;
 };
 
 struct SurfaceParams {
     bool enabled = false;
-    float splat_size_world = 0.06f;
-    float threshold = 0.55f;
-    float smooth_width = 0.18f;
-    int blur_iterations = 2;
-    float normal_strength = 0.2f;
-    float rim_width_px = 6.0f;
-    float base_color[3] = {0.06f, 0.30f, 0.62f};
+    // world-space distances (converted to UV in surface_render)
+    float surface_radius = 0.035f;
+    float smooth_width   = 0.008f;
+    float rim_width      = 0.05f;
+    float normal_strength = 0.7f;
+    float base_color[3]      = {0.06f, 0.30f, 0.62f};
     float highlight_color[3] = {0.82f, 0.94f, 1.00f};
+    float refraction_strength = 0.04f;
+    float checker_scale       = 12.0f;
+    float checker_color_a[3] = {0.85f, 0.85f, 0.85f};
+    float checker_color_b[3] = {0.15f, 0.15f, 0.15f};
+    float water_opacity = 0.35f;
 };
 
-static void create_density_target(GLuint& fbo, GLuint& tex, int w, int h) {
+static void create_jfa_target(GLuint& fbo, GLuint& tex, int w, int h) {
     if (tex) glDeleteTextures(1, &tex);
     if (fbo) glDeleteFramebuffers(1, &fbo);
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, w, h, 0, GL_RED, GL_FLOAT, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, w, h, 0, GL_RG, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glGenFramebuffers(1, &fbo);
@@ -269,67 +285,70 @@ static void create_density_target(GLuint& fbo, GLuint& tex, int w, int h) {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                            tex, 0);
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        std::fprintf(stderr, "surface FBO incomplete\n");
+        std::fprintf(stderr, "JFA FBO incomplete\n");
         std::exit(1);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 static void surface_resize(SurfaceRenderer& sr, int w, int h) {
-    if (w == sr.fbo_w && h == sr.fbo_h && sr.density_fbo != 0) return;
-    create_density_target(sr.density_fbo, sr.density_tex, w, h);
-    create_density_target(sr.blur_fbo[0], sr.blur_tex[0], w, h);
-    create_density_target(sr.blur_fbo[1], sr.blur_tex[1], w, h);
+    if (w == sr.fbo_w && h == sr.fbo_h && sr.seed_fbo != 0) return;
+    create_jfa_target(sr.seed_fbo,    sr.seed_tex,    w, h);
+    create_jfa_target(sr.jfa_fbo[0],  sr.jfa_tex[0],  w, h);
+    create_jfa_target(sr.jfa_fbo[1],  sr.jfa_tex[1],  w, h);
     sr.fbo_w = w;
     sr.fbo_h = h;
 }
 
 static void surface_init(SurfaceRenderer& sr) {
-    GLuint splat_vs = compile_shader(GL_VERTEX_SHADER, SURFACE_SPLAT_VS);
-    GLuint splat_fs = compile_shader(GL_FRAGMENT_SHADER, SURFACE_SPLAT_FS);
-    sr.splat_prog = link_program(splat_vs, splat_fs);
-    glDeleteShader(splat_vs);
-    glDeleteShader(splat_fs);
+    GLuint seed_vs = compile_shader(GL_VERTEX_SHADER,   SURFACE_SEED_VS);
+    GLuint seed_fs = compile_shader(GL_FRAGMENT_SHADER, SURFACE_SEED_FS);
+    sr.seed_prog = link_program(seed_vs, seed_fs);
+    glDeleteShader(seed_vs);
+    glDeleteShader(seed_fs);
 
-    GLuint quad_vs = compile_shader(GL_VERTEX_SHADER, FULLSCREEN_VS);
-    GLuint blur_fs = compile_shader(GL_FRAGMENT_SHADER, SURFACE_BLUR_FS);
-    sr.blur_prog = link_program(quad_vs, blur_fs);
-    glDeleteShader(blur_fs);
+    GLuint quad_vs = compile_shader(GL_VERTEX_SHADER,   FULLSCREEN_VS);
+    GLuint jfa_fs  = compile_shader(GL_FRAGMENT_SHADER, SURFACE_JFA_FS);
+    sr.jfa_prog = link_program(quad_vs, jfa_fs);
+    glDeleteShader(jfa_fs);
 
     GLuint shade_fs = compile_shader(GL_FRAGMENT_SHADER, SURFACE_SHADE_FS);
     sr.shade_prog = link_program(quad_vs, shade_fs);
     glDeleteShader(shade_fs);
     glDeleteShader(quad_vs);
 
-    sr.splat_world_scale_loc =
-        glGetUniformLocation(sr.splat_prog, "u_world_scale_inv");
-    sr.splat_size_loc = glGetUniformLocation(sr.splat_prog, "u_splat_size_px");
-    sr.blur_step_loc = glGetUniformLocation(sr.blur_prog, "u_step");
-    sr.blur_tex_loc = glGetUniformLocation(sr.blur_prog, "u_tex");
-    sr.shade_density_loc = glGetUniformLocation(sr.shade_prog, "u_density");
-    sr.shade_threshold_loc = glGetUniformLocation(sr.shade_prog, "u_threshold");
-    sr.shade_smooth_loc = glGetUniformLocation(sr.shade_prog, "u_smooth_width");
-    sr.shade_base_loc = glGetUniformLocation(sr.shade_prog, "u_base_color");
-    sr.shade_highlight_loc =
-        glGetUniformLocation(sr.shade_prog, "u_highlight_color");
-    sr.shade_normal_strength_loc =
-        glGetUniformLocation(sr.shade_prog, "u_normal_strength");
-    sr.shade_rim_width_loc =
-        glGetUniformLocation(sr.shade_prog, "u_rim_width_px");
+    sr.seed_world_scale_loc = glGetUniformLocation(sr.seed_prog, "u_world_scale_inv");
+    sr.seed_radius_px_loc   = glGetUniformLocation(sr.seed_prog, "u_seed_radius_px");
+
+    sr.jfa_step_loc = glGetUniformLocation(sr.jfa_prog, "u_step");
+    sr.jfa_tex_loc  = glGetUniformLocation(sr.jfa_prog, "u_tex");
+
+    sr.shade_seed_tex_loc           = glGetUniformLocation(sr.shade_prog, "u_seed_tex");
+    sr.shade_surface_radius_loc     = glGetUniformLocation(sr.shade_prog, "u_surface_radius");
+    sr.shade_smooth_loc             = glGetUniformLocation(sr.shade_prog, "u_smooth_width");
+    sr.shade_rim_width_loc          = glGetUniformLocation(sr.shade_prog, "u_rim_width");
+    sr.shade_normal_strength_loc    = glGetUniformLocation(sr.shade_prog, "u_normal_strength");
+    sr.shade_base_loc               = glGetUniformLocation(sr.shade_prog, "u_base_color");
+    sr.shade_highlight_loc          = glGetUniformLocation(sr.shade_prog, "u_highlight_color");
+    sr.shade_refraction_strength_loc = glGetUniformLocation(sr.shade_prog, "u_refraction_strength");
+    sr.shade_checker_scale_loc      = glGetUniformLocation(sr.shade_prog, "u_checker_scale");
+    sr.shade_checker_color_a_loc    = glGetUniformLocation(sr.shade_prog, "u_checker_color_a");
+    sr.shade_checker_color_b_loc    = glGetUniformLocation(sr.shade_prog, "u_checker_color_b");
+    sr.shade_water_opacity_loc      = glGetUniformLocation(sr.shade_prog, "u_water_opacity");
 
     glGenVertexArrays(1, &sr.dummy_vao);
 }
 
 static void surface_destroy(SurfaceRenderer& sr) {
-    if (sr.density_fbo) glDeleteFramebuffers(1, &sr.density_fbo);
-    if (sr.density_tex) glDeleteTextures(1, &sr.density_tex);
+    if (sr.seed_fbo) glDeleteFramebuffers(1, &sr.seed_fbo);
+    if (sr.seed_tex) glDeleteTextures(1, &sr.seed_tex);
     for (int i = 0; i < 2; ++i) {
-        if (sr.blur_fbo[i]) glDeleteFramebuffers(1, &sr.blur_fbo[i]);
-        if (sr.blur_tex[i]) glDeleteTextures(1, &sr.blur_tex[i]);
+        if (sr.jfa_fbo[i]) glDeleteFramebuffers(1, &sr.jfa_fbo[i]);
+        if (sr.jfa_tex[i]) glDeleteTextures(1, &sr.jfa_tex[i]);
     }
     if (sr.dummy_vao) glDeleteVertexArrays(1, &sr.dummy_vao);
-    if (sr.splat_prog) glDeleteProgram(sr.splat_prog);
-    if (sr.blur_prog) glDeleteProgram(sr.blur_prog);
+    if (sr.seed_prog)  glDeleteProgram(sr.seed_prog);
+    if (sr.jfa_prog)   glDeleteProgram(sr.jfa_prog);
     if (sr.shade_prog) glDeleteProgram(sr.shade_prog);
 }
 
@@ -338,75 +357,68 @@ static void surface_render(SurfaceRenderer& sr, const SurfaceParams& params,
                            int h, float world_scale_inv) {
     surface_resize(sr, w, h);
 
-    glDisable(GL_BLEND);
-    glBindFramebuffer(GL_FRAMEBUFFER, sr.density_fbo);
+    // --- Seed pass: clear to sentinel, mark particle positions ---
+    glBindFramebuffer(GL_FRAMEBUFFER, sr.seed_fbo);
     glViewport(0, 0, w, h);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    const float kSentinel = 1.0e4f;
+    const float clear_seed[] = {kSentinel, kSentinel, 0.0f, 0.0f};
+    glClearBufferfv(GL_COLOR, 0, clear_seed);
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ONE);
-    glBlendEquation(GL_FUNC_ADD);
-
-    float splat_size_px =
-        params.splat_size_world * world_scale_inv * static_cast<float>(h);
-    if (splat_size_px < 2.0f) splat_size_px = 2.0f;
-
-    glUseProgram(sr.splat_prog);
-    glUniform1f(sr.splat_world_scale_loc, world_scale_inv);
-    glUniform1f(sr.splat_size_loc, splat_size_px);
+    glDisable(GL_BLEND);
+    float seed_radius_px = std::max(kParticleRadiusWorld * world_scale_inv
+                                    * static_cast<float>(h), 2.0f);
+    glUseProgram(sr.seed_prog);
+    glUniform1f(sr.seed_world_scale_loc, world_scale_inv);
+    glUniform1f(sr.seed_radius_px_loc, seed_radius_px);
     glBindVertexArray(particle_vao);
     glDrawArrays(GL_POINTS, 0, particle_count);
     glBindVertexArray(0);
 
-    glDisable(GL_BLEND);
-    glBlendEquation(GL_FUNC_ADD);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    GLuint src_tex = sr.density_tex;
-    int read_idx = 0;
-    glUseProgram(sr.blur_prog);
-    glUniform1i(sr.blur_tex_loc, 0);
+    // --- JFA passes: propagate seeds log2(max_dim) times ---
+    glUseProgram(sr.jfa_prog);
+    glUniform1i(sr.jfa_tex_loc, 0);
     glActiveTexture(GL_TEXTURE0);
     glBindVertexArray(sr.dummy_vao);
 
-    int iters = params.blur_iterations;
-    if (iters < 0) iters = 0;
-    if (iters > 8) iters = 8;
-    for (int i = 0; i < iters; ++i) {
-        glBindFramebuffer(GL_FRAMEBUFFER, sr.blur_fbo[read_idx]);
+    GLuint src_tex = sr.seed_tex;
+    int write_idx = 0;
+    for (int step = std::max(w, h) / 2; step >= 1; step /= 2) {
+        glBindFramebuffer(GL_FRAMEBUFFER, sr.jfa_fbo[write_idx]);
         glViewport(0, 0, w, h);
         glBindTexture(GL_TEXTURE_2D, src_tex);
-        glUniform2f(sr.blur_step_loc, 1.0f / static_cast<float>(w), 0.0f);
+        glUniform2f(sr.jfa_step_loc, static_cast<float>(step) / w,
+                                     static_cast<float>(step) / h);
         glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        int write_idx = 1 - read_idx;
-        glBindFramebuffer(GL_FRAMEBUFFER, sr.blur_fbo[write_idx]);
-        glBindTexture(GL_TEXTURE_2D, sr.blur_tex[read_idx]);
-        glUniform2f(sr.blur_step_loc, 0.0f, 1.0f / static_cast<float>(h));
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-
-        src_tex = sr.blur_tex[write_idx];
-        read_idx = write_idx;
+        src_tex = sr.jfa_tex[write_idx];
+        write_idx = 1 - write_idx;
     }
 
+    // --- Shade pass ---
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, w, h);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_BLEND);
 
+    // Convert world-space params to UV space (1 UV = 2 * kWorldHalfExtent world units)
+    const float uv_scale = world_scale_inv * 0.5f;
     glUseProgram(sr.shade_prog);
-    glUniform1i(sr.shade_density_loc, 0);
-    glUniform1f(sr.shade_threshold_loc, params.threshold);
-    glUniform1f(sr.shade_smooth_loc, params.smooth_width);
+    glUniform1i(sr.shade_seed_tex_loc, 0);
+    glUniform1f(sr.shade_surface_radius_loc, params.surface_radius * uv_scale);
+    glUniform1f(sr.shade_smooth_loc,         params.smooth_width   * uv_scale);
+    glUniform1f(sr.shade_rim_width_loc,      params.rim_width      * uv_scale);
     glUniform1f(sr.shade_normal_strength_loc, params.normal_strength);
-    glUniform1f(sr.shade_rim_width_loc, params.rim_width_px);
-    glUniform3fv(sr.shade_base_loc, 1, params.base_color);
+    glUniform3fv(sr.shade_base_loc,      1, params.base_color);
     glUniform3fv(sr.shade_highlight_loc, 1, params.highlight_color);
+    glUniform1f(sr.shade_refraction_strength_loc, params.refraction_strength);
+    glUniform1f(sr.shade_checker_scale_loc,       params.checker_scale);
+    glUniform3fv(sr.shade_checker_color_a_loc, 1, params.checker_color_a);
+    glUniform3fv(sr.shade_checker_color_b_loc, 1, params.checker_color_b);
+    glUniform1f(sr.shade_water_opacity_loc, params.water_opacity);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, src_tex);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -557,7 +569,6 @@ int main() {
 
     GLint u_world_scale_inv_loc = glGetUniformLocation(prog, "u_world_scale_inv");
     GLint u_point_size_px_loc = glGetUniformLocation(prog, "u_point_size_px");
-    constexpr float kParticleRadiusWorld = 0.0075f;
 
     SurfaceRenderer surface{};
     surface_init(surface);
@@ -728,23 +739,32 @@ int main() {
             }
 
             ImGui::Separator();
-            ImGui::Text("surface render");
+            ImGui::Text("surface render (JFA SDF)");
             ImGui::Checkbox("enabled##surface", &surface_params.enabled);
             ImGui::PushItemWidth(120.0f);
-            ImGui::InputFloat("splat size (world)", &surface_params.splat_size_world,
+            ImGui::InputFloat("surface radius", &surface_params.surface_radius,
                               0.0f, 0.0f, "%.4f");
-            ImGui::InputFloat("threshold", &surface_params.threshold, 0.0f, 0.0f,
-                              "%.3f");
-            ImGui::InputFloat("smooth width", &surface_params.smooth_width, 0.0f,
-                              0.0f, "%.3f");
-            ImGui::InputInt("blur iterations", &surface_params.blur_iterations, 0, 0);
+            ImGui::InputFloat("smooth width", &surface_params.smooth_width,
+                              0.0f, 0.0f, "%.4f");
+            ImGui::InputFloat("rim width", &surface_params.rim_width,
+                              0.0f, 0.0f, "%.4f");
             ImGui::InputFloat("normal strength", &surface_params.normal_strength,
-                              0.0f, 0.0f, "%.2f");
-            ImGui::InputFloat("rim width (px)", &surface_params.rim_width_px,
                               0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
             ImGui::ColorEdit3("base", surface_params.base_color);
             ImGui::ColorEdit3("highlight", surface_params.highlight_color);
+            ImGui::Separator();
+            ImGui::Text("refraction / background");
+            ImGui::PushItemWidth(120.0f);
+            ImGui::SliderFloat("refraction", &surface_params.refraction_strength,
+                               0.0f, 0.2f);
+            ImGui::SliderFloat("checker scale", &surface_params.checker_scale,
+                               1.0f, 50.0f);
+            ImGui::SliderFloat("water opacity", &surface_params.water_opacity,
+                               0.0f, 1.0f);
+            ImGui::PopItemWidth();
+            ImGui::ColorEdit3("checker A", surface_params.checker_color_a);
+            ImGui::ColorEdit3("checker B", surface_params.checker_color_b);
             ImGui::End();
         }
 
