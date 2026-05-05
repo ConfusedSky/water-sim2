@@ -1,0 +1,9 @@
+{
+  "name": "Pillar",
+  "spawn_rects": [
+    { "x": -2.70, "y": -2.70, "width": 1.22, "height": 5.56 }
+  ],
+  "obstacles": [
+    { "type": "circle", "cx": 0.50, "cy": -0.30, "r": 0.42 }
+  ]
+}

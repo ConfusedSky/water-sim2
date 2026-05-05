@@ -42,6 +42,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    GIT_SHALLOW TRUE
+)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install    OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
+
 add_library(imgui_lib STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -60,6 +70,7 @@ add_executable(water_sim2
     src/main.cpp
     src/kernel.cu
     src/scenes.cpp
+    src/scene_desc.cpp
 )
 target_link_libraries(water_sim2 PRIVATE
     CUDA::cudart
@@ -68,5 +79,13 @@ target_link_libraries(water_sim2 PRIVATE
     glfw
     glm::glm
     imgui_lib
+    nlohmann_json::nlohmann_json
 )
 target_include_directories(water_sim2 PRIVATE src)
+
+# Copy scenes to build directory so the binary can find them
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/scenes)
+file(GLOB _scene_jsons CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/scenes/*.json)
+foreach(_f ${_scene_jsons})
+    configure_file(${_f} ${CMAKE_BINARY_DIR}/scenes/ COPYONLY)
+endforeach()

@@ -8,11 +8,19 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
+#include <filesystem>
+#include <string>
+#include <unistd.h>
+#include <vector>
 
 #include "kernel.cuh"
+#include "scene_desc.h"
+
+namespace fs = std::filesystem;
 
 struct FrameSample {
     double t;
@@ -186,6 +194,60 @@ void main() {
 }
 )";
 
+static const char* OBSTACLE_VS = R"(#version 450 core
+layout(location = 0) in vec2 in_pos;
+uniform float u_world_scale_inv;
+void main() {
+    gl_Position = vec4(in_pos * u_world_scale_inv, 0.0, 1.0);
+}
+)";
+
+static const char* OBSTACLE_FS = R"(#version 450 core
+out vec4 frag;
+void main() {
+    frag = vec4(0.28, 0.30, 0.35, 0.92);
+}
+)";
+
+static std::string get_scenes_dir() {
+    char buf[4096] = {};
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len <= 0) return "scenes";
+    return fs::path(std::string(buf, len)).parent_path() / "scenes";
+}
+
+static constexpr float kPiF = 3.14159265f;
+
+static void append_circle_tris(std::vector<float2>& v,
+                                float cx, float cy, float r) {
+    constexpr int kSeg = 48;
+    for (int i = 0; i < kSeg; ++i) {
+        float a0 = 2.0f * kPiF * i       / kSeg;
+        float a1 = 2.0f * kPiF * (i + 1) / kSeg;
+        v.push_back({cx, cy});
+        v.push_back({cx + r * cosf(a0), cy + r * sinf(a0)});
+        v.push_back({cx + r * cosf(a1), cy + r * sinf(a1)});
+    }
+}
+
+static void append_box_tris(std::vector<float2>& v,
+                             float cx, float cy, float hw, float hh) {
+    float x0 = cx - hw, x1 = cx + hw, y0 = cy - hh, y1 = cy + hh;
+    v.push_back({x0, y0}); v.push_back({x1, y0}); v.push_back({x1, y1});
+    v.push_back({x0, y0}); v.push_back({x1, y1}); v.push_back({x0, y1});
+}
+
+static std::vector<float2> build_obstacle_mesh(const SceneDesc& scene) {
+    std::vector<float2> v;
+    for (const Obstacle& obs : scene.obstacles) {
+        if (obs.type == ObstacleType::Circle)
+            append_circle_tris(v, obs.circle.cx, obs.circle.cy, obs.circle.r);
+        else
+            append_box_tris(v, obs.box.cx, obs.box.cy, obs.box.hw, obs.box.hh);
+    }
+    return v;
+}
+
 static GLuint compile_shader(GLenum type, const char* src) {
     GLuint s = glCreateShader(type);
     glShaderSource(s, 1, &src, nullptr);
@@ -252,6 +314,52 @@ struct SurfaceParams {
     float rim_width_px = 6.0f;
     float base_color[3] = {0.06f, 0.30f, 0.62f};
     float highlight_color[3] = {0.82f, 0.94f, 1.00f};
+};
+
+struct ObstacleRenderer {
+    GLuint prog = 0;
+    GLuint vao  = 0;
+    GLuint vbo  = 0;
+    int    vert_count = 0;
+    GLint  world_scale_loc = -1;
+
+    void init() {
+        GLuint vs = compile_shader(GL_VERTEX_SHADER,   OBSTACLE_VS);
+        GLuint fs = compile_shader(GL_FRAGMENT_SHADER, OBSTACLE_FS);
+        prog = link_program(vs, fs);
+        glDeleteShader(vs);
+        glDeleteShader(fs);
+        world_scale_loc = glGetUniformLocation(prog, "u_world_scale_inv");
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float2), nullptr);
+        glBindVertexArray(0);
+    }
+
+    void upload(const std::vector<float2>& verts) {
+        vert_count = static_cast<int>(verts.size());
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, vert_count * sizeof(float2),
+                     verts.data(), GL_DYNAMIC_DRAW);
+    }
+
+    void draw(float world_scale_inv) const {
+        if (vert_count == 0) return;
+        glUseProgram(prog);
+        glUniform1f(world_scale_loc, world_scale_inv);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, vert_count);
+        glBindVertexArray(0);
+    }
+
+    void destroy() {
+        if (vbo)  glDeleteBuffers(1, &vbo);
+        if (vao)  glDeleteVertexArrays(1, &vao);
+        if (prog) glDeleteProgram(prog);
+    }
 };
 
 static void create_density_target(GLuint& fbo, GLuint& tex, int w, int h) {
@@ -505,7 +613,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 4", nullptr, nullptr);
+    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 5", nullptr, nullptr);
     if (!win) {
         std::fprintf(stderr, "glfwCreateWindow failed\n");
         glfwTerminate();
@@ -562,6 +670,16 @@ int main() {
     SurfaceRenderer surface{};
     surface_init(surface);
     SurfaceParams surface_params{};
+
+    ObstacleRenderer obstacle_renderer{};
+    obstacle_renderer.init();
+
+    SceneDesc current_scene{};
+    std::vector<std::string> scene_files;
+    int selected_scene_file = -1;
+    bool scene_files_loaded = false;
+    std::string scene_load_error;
+    static char scene_load_error_buf[256] = {};
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -640,6 +758,12 @@ int main() {
             glBindVertexArray(0);
         }
 
+        // Obstacles rendered on top (solid, opaque)
+        glDisable(GL_BLEND);
+        obstacle_renderer.draw(world_scale_inv);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         {
             ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
             ImGui::Begin("stats", nullptr,
@@ -675,12 +799,60 @@ int main() {
             ImGui::PushItemWidth(160.0f);
             if (ImGui::Combo("scene", &scene_idx, scene_items, kSceneCount)) {
                 set_active_scene(static_cast<SceneId>(scene_idx));
+                current_scene = {};
+                selected_scene_file = -1;
+                obstacle_renderer.upload({});
                 accumulator = kFixedDt;
             }
             ImGui::PopItemWidth();
             if (ImGui::Button("Reset")) {
                 reset_simulation();
                 accumulator = kFixedDt;
+            }
+
+            ImGui::Separator();
+            ImGui::Text("JSON Scenes");
+            if (!scene_files_loaded || ImGui::Button("Refresh##scenes")) {
+                scene_files = list_scene_files(get_scenes_dir());
+                scene_files_loaded = true;
+            }
+            if (scene_files.empty()) {
+                ImGui::TextDisabled("(no .json files in scenes/)");
+            } else {
+                ImGui::BeginChild("scene_list", ImVec2(0, 100), true);
+                for (int i = 0; i < static_cast<int>(scene_files.size()); ++i) {
+                    std::string label = fs::path(scene_files[i]).stem().string();
+                    if (ImGui::Selectable(label.c_str(), selected_scene_file == i))
+                        selected_scene_file = i;
+                }
+                ImGui::EndChild();
+                if (selected_scene_file >= 0) {
+                    if (ImGui::Button("Load##scenefile")) {
+                        SceneDesc desc;
+                        std::string err;
+                        if (load_scene_json(scene_files[selected_scene_file], desc, err)) {
+                            std::vector<float> sdf_px;
+                            bake_sdf(desc, kWorldHalfExtent, kSdfResolution, sdf_px);
+                            upload_sdf(sdf_px.data(), kSdfResolution);
+                            std::vector<float2> init_pos;
+                            seed_from_scene_desc(desc, get_particle_count(), init_pos);
+                            set_initial_positions(init_pos);
+                            current_scene = std::move(desc);
+                            obstacle_renderer.upload(build_obstacle_mesh(current_scene));
+                            reset_simulation();
+                            accumulator = kFixedDt;
+                            scene_load_error.clear();
+                        } else {
+                            scene_load_error = err;
+                        }
+                    }
+                }
+                if (!scene_load_error.empty()) {
+                    ImGui::TextColored({1.0f, 0.3f, 0.3f, 1.0f}, "%s", scene_load_error.c_str());
+                }
+                if (!current_scene.name.empty()) {
+                    ImGui::Text("Active: %s", current_scene.name.c_str());
+                }
             }
             ImGui::End();
         }
@@ -758,6 +930,7 @@ int main() {
 
     CUDA_CHECK(cudaGraphicsUnregisterResource(cuda_vbo));
     shutdown_simulation();
+    obstacle_renderer.destroy();
     surface_destroy(surface);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

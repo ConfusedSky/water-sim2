@@ -1,0 +1,10 @@
+{
+  "name": "Platform",
+  "spawn_rects": [
+    { "x": -2.70, "y": -2.70, "width": 1.22, "height": 5.56 }
+  ],
+  "obstacles": [
+    { "type": "box", "cx": 0.60, "cy": -0.40, "hw": 1.40, "hh": 0.16 },
+    { "type": "circle", "cx": 2.00, "cy": -0.56, "r": 0.16 }
+  ]
+}

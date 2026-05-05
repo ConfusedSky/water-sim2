@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <vector_types.h>
 
 #include "scenes.h"
@@ -50,3 +51,7 @@ SceneId get_active_scene();
 void set_active_scene(SceneId id);
 
 void step_simulation(float dt, const MouseState& mouse, float4* render_particles);
+
+void set_initial_positions(const std::vector<float2>& positions);
+void upload_sdf(const float* pixels, int resolution);
+void clear_sdf();
