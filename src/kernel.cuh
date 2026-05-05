@@ -30,6 +30,8 @@ struct TunableParams {
     float velocity_damping;
     float boundary_bounce;
     float viscosity_c;
+    float max_speed;
+    float max_position_correction;
 };
 
 void init_simulation();

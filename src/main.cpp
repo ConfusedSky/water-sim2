@@ -412,6 +412,11 @@ int main() {
                                          0.0f, 0.0f, "%.3f");
             changed |= ImGui::InputFloat("viscosity_c (XSPH)", &tp.viscosity_c,
                                          0.0f, 0.0f, "%.6f");
+            changed |= ImGui::InputFloat("max speed", &tp.max_speed, 0.0f, 0.0f,
+                                         "%.3f");
+            changed |= ImGui::InputFloat("max pos correction",
+                                         &tp.max_position_correction, 0.0f,
+                                         0.0f, "%.5f");
             ImGui::PopItemWidth();
             if (changed) {
                 set_tunable_params(tp);

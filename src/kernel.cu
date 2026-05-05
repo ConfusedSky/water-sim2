@@ -687,7 +687,7 @@ void upload_params() {
   g_params = SimParams{};
   g_params.box_min = make_float2(-kWorldHalfExtent, -kWorldHalfExtent);
   g_params.box_max = make_float2(kWorldHalfExtent, kWorldHalfExtent);
-  g_params.gravity = -5.5f;
+  g_params.gravity = -8.5f;
   g_params.particle_radius = 0.0075f;
   g_params.kernel_radius = 0.05f;
   g_params.rest_density = estimate_rest_density(g_params.kernel_radius) * 0.95f;
@@ -696,10 +696,10 @@ void upload_params() {
   g_params.tensile_n = 4.0f;
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 1.0f;
-  g_params.boundary_bounce = 0.02f;
-  g_params.viscosity_c = 0.0001f;
+  g_params.boundary_bounce = 0.2f;
+  g_params.viscosity_c = 0.0003f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
-  g_params.max_speed = 2.75f;
+  g_params.max_speed = 100.0f;
   g_params.solver_iterations = kSolverIterations;
   compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
@@ -863,6 +863,8 @@ TunableParams get_tunable_params() {
   t.velocity_damping = g_params.velocity_damping;
   t.boundary_bounce = g_params.boundary_bounce;
   t.viscosity_c = g_params.viscosity_c;
+  t.max_speed = g_params.max_speed;
+  t.max_position_correction = g_params.max_position_correction;
   return t;
 }
 
@@ -881,6 +883,9 @@ void set_tunable_params(const TunableParams &params) {
   g_params.boundary_bounce =
       std::max(0.0f, std::min(params.boundary_bounce, 1.0f));
   g_params.viscosity_c = std::max(params.viscosity_c, 0.0f);
+  g_params.max_speed = std::max(params.max_speed, 1.0e-3f);
+  g_params.max_position_correction =
+      std::max(params.max_position_correction, 1.0e-5f);
   compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
