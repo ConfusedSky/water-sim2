@@ -153,6 +153,7 @@ uniform float u_smooth_width;
 uniform vec3 u_base_color;
 uniform vec3 u_highlight_color;
 uniform float u_normal_strength;
+uniform float u_rim_width_px;
 out vec4 frag;
 void main() {
     float d = texture(u_density, v_uv).r;
@@ -164,8 +165,15 @@ void main() {
              - texture(u_density, v_uv - vec2(ts.x, 0.0)).r;
     float dy = texture(u_density, v_uv + vec2(0.0, ts.y)).r
              - texture(u_density, v_uv - vec2(0.0, ts.y)).r;
-    vec3 n = normalize(vec3(-dx * u_normal_strength,
-                            -dy * u_normal_strength, 1.0));
+    vec2 grad = vec2(dx, dy);
+    float gmag = length(grad);
+    vec2 dir = (gmag > 1.0e-6) ? grad / gmag : vec2(0.0);
+    float iso_dist_px = (gmag > 1.0e-6)
+        ? abs(d - u_threshold) / gmag
+        : 1.0e6;
+    float rim_mask = smoothstep(u_rim_width_px, 0.0, iso_dist_px);
+    float tilt = clamp(u_normal_strength, 0.0, 0.95) * rim_mask;
+    vec3 n = vec3(-dir * tilt, sqrt(max(1.0 - tilt * tilt, 0.0)));
     vec3 light = normalize(vec3(0.35, 0.55, 0.80));
     float diff = max(dot(n, light), 0.0);
     vec3 H = normalize(light + vec3(0.0, 0.0, 1.0));
@@ -231,15 +239,17 @@ struct SurfaceRenderer {
     GLint shade_base_loc = -1;
     GLint shade_highlight_loc = -1;
     GLint shade_normal_strength_loc = -1;
+    GLint shade_rim_width_loc = -1;
 };
 
 struct SurfaceParams {
-    bool enabled = true;
+    bool enabled = false;
     float splat_size_world = 0.06f;
     float threshold = 0.55f;
     float smooth_width = 0.18f;
     int blur_iterations = 2;
-    float normal_strength = 6.0f;
+    float normal_strength = 0.2f;
+    float rim_width_px = 6.0f;
     float base_color[3] = {0.06f, 0.30f, 0.62f};
     float highlight_color[3] = {0.82f, 0.94f, 1.00f};
 };
@@ -304,6 +314,8 @@ static void surface_init(SurfaceRenderer& sr) {
         glGetUniformLocation(sr.shade_prog, "u_highlight_color");
     sr.shade_normal_strength_loc =
         glGetUniformLocation(sr.shade_prog, "u_normal_strength");
+    sr.shade_rim_width_loc =
+        glGetUniformLocation(sr.shade_prog, "u_rim_width_px");
 
     glGenVertexArrays(1, &sr.dummy_vao);
 }
@@ -388,6 +400,7 @@ static void surface_render(SurfaceRenderer& sr, const SurfaceParams& params,
     glUniform1f(sr.shade_threshold_loc, params.threshold);
     glUniform1f(sr.shade_smooth_loc, params.smooth_width);
     glUniform1f(sr.shade_normal_strength_loc, params.normal_strength);
+    glUniform1f(sr.shade_rim_width_loc, params.rim_width_px);
     glUniform3fv(sr.shade_base_loc, 1, params.base_color);
     glUniform3fv(sr.shade_highlight_loc, 1, params.highlight_color);
     glActiveTexture(GL_TEXTURE0);
@@ -490,6 +503,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 4", nullptr, nullptr);
     if (!win) {
@@ -730,6 +744,8 @@ int main() {
                               0.0f, "%.3f");
             ImGui::InputInt("blur iterations", &surface_params.blur_iterations, 0, 0);
             ImGui::InputFloat("normal strength", &surface_params.normal_strength,
+                              0.0f, 0.0f, "%.2f");
+            ImGui::InputFloat("rim width (px)", &surface_params.rim_width_px,
                               0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
             ImGui::ColorEdit3("base", surface_params.base_color);
