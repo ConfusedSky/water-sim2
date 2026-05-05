@@ -21,18 +21,18 @@ void fill_grid(std::vector<float2>& out, int& write_idx, float start_x,
 
 void seed_column_left(std::vector<float2>& out) {
     int idx = 0;
-    fill_grid(out, idx, -0.80f, -0.35f, 32, 64);
+    fill_grid(out, idx, -2.70f, -2.70f, 64, 256);
 }
 
 void seed_wide_block(std::vector<float2>& out) {
     int idx = 0;
-    fill_grid(out, idx, -0.608f, -0.80f, 64, 32);
+    fill_grid(out, idx, -2.432f, -2.70f, 256, 64);
 }
 
 void seed_two_columns(std::vector<float2>& out) {
     int idx = 0;
-    fill_grid(out, idx, -0.80f, -0.35f, 16, 64);
-    fill_grid(out, idx, 0.50f, -0.35f, 16, 64);
+    fill_grid(out, idx, -2.70f, -2.70f, 32, 256);
+    fill_grid(out, idx, 2.092f, -2.70f, 32, 256);
 }
 
 }  // namespace

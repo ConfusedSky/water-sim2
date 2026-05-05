@@ -319,6 +319,46 @@ __global__ void find_neighbors_grid_kernel(const float2 *positions,
   neighbor_counts[i] = count;
 }
 
+__global__ void compute_density_grid_kernel(const float2 *positions,
+                                            const int *particle_index,
+                                            const int *cell_start,
+                                            const int *cell_end, float *density,
+                                            int n) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) {
+    return;
+  }
+
+  float2 pi = positions[i];
+  int2 c = cell_coords_for(pi);
+  float rho = poly6_weight(make_float2(0.0f, 0.0f));
+
+  for (int dy = -1; dy <= 1; ++dy) {
+    int ny = c.y + dy;
+    if (ny < 0 || ny >= c_params.grid_h) {
+      continue;
+    }
+    for (int dx = -1; dx <= 1; ++dx) {
+      int nx = c.x + dx;
+      if (nx < 0 || nx >= c_params.grid_w) {
+        continue;
+      }
+      int hash = ny * c_params.grid_w + nx;
+      int start = cell_start[hash];
+      int end = cell_end[hash];
+      for (int idx = start; idx < end; ++idx) {
+        int j = particle_index[idx];
+        if (j == i) {
+          continue;
+        }
+        rho += poly6_weight(pi - positions[j]);
+      }
+    }
+  }
+
+  density[i] = rho;
+}
+
 __global__ void compute_lambda_kernel(const float2 *positions,
                                       const int *neighbors,
                                       const int *neighbor_counts, float *lambda,
@@ -557,8 +597,8 @@ float estimate_rest_density(float kernel_radius) {
 
 void upload_params() {
   g_params = SimParams{};
-  g_params.box_min = make_float2(-0.88f, -0.88f);
-  g_params.box_max = make_float2(0.88f, 0.88f);
+  g_params.box_min = make_float2(-kWorldHalfExtent, -kWorldHalfExtent);
+  g_params.box_max = make_float2(kWorldHalfExtent, kWorldHalfExtent);
   g_params.gravity = -5.5f;
   g_params.particle_radius = 0.0075f;
   g_params.kernel_radius = 0.05f;
@@ -576,9 +616,28 @@ void upload_params() {
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
 
+void rebuild_spatial_grid(const float2 *positions, int blocks, int num_cells) {
+  compute_cell_hash_kernel<<<blocks, kThreadsPerBlock>>>(
+      positions, g_cell_hash, g_particle_index, kParticleCount);
+  thrust::sort_by_key(thrust::device, g_cell_hash,
+                      g_cell_hash + kParticleCount, g_particle_index);
+  CUDA_CHECK(cudaMemset(g_cell_start, 0, num_cells * sizeof(int)));
+  CUDA_CHECK(cudaMemset(g_cell_end, 0, num_cells * sizeof(int)));
+  find_cell_starts_kernel<<<blocks, kThreadsPerBlock>>>(
+      g_cell_hash, g_cell_start, g_cell_end, kParticleCount);
+}
+
 void launch_density_and_stats_passes(int blocks) {
-  compute_density_only_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_density,
-                                                            kParticleCount);
+  if (g_use_spatial_hash) {
+    int num_cells = g_params.grid_w * g_params.grid_h;
+    rebuild_spatial_grid(g_pos, blocks, num_cells);
+    compute_density_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_particle_index, g_cell_start, g_cell_end, g_density,
+        kParticleCount);
+  } else {
+    compute_density_only_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_density, kParticleCount);
+  }
   CUDA_CHECK(cudaMemset(g_stats, 0, sizeof(DeviceStats)));
   gather_stats_kernel<<<blocks, kThreadsPerBlock>>>(g_density, g_vel, g_stats,
                                                     kParticleCount);
@@ -755,14 +814,7 @@ void step_simulation(float dt, const MouseState &mouse,
 
   for (int iter = 0; iter < g_params.solver_iterations; ++iter) {
     if (g_use_spatial_hash) {
-      compute_cell_hash_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_predicted, g_cell_hash, g_particle_index, kParticleCount);
-      thrust::sort_by_key(thrust::device, g_cell_hash,
-                          g_cell_hash + kParticleCount, g_particle_index);
-      CUDA_CHECK(cudaMemset(g_cell_start, 0, num_cells * sizeof(int)));
-      CUDA_CHECK(cudaMemset(g_cell_end, 0, num_cells * sizeof(int)));
-      find_cell_starts_kernel<<<blocks, kThreadsPerBlock>>>(
-          g_cell_hash, g_cell_start, g_cell_end, kParticleCount);
+      rebuild_spatial_grid(g_predicted, blocks, num_cells);
       find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
           g_predicted, g_particle_index, g_cell_start, g_cell_end, g_neighbors,
           g_neighbor_counts, kParticleCount);

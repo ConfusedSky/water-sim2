@@ -4,9 +4,6 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
-
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -70,12 +67,14 @@ constexpr int kMouseButtonPush = 2;
 
 static const char* VS_SRC = R"(#version 450 core
 layout(location = 0) in vec4 in_particle;
+uniform float u_world_scale_inv;
+uniform float u_point_size_px;
 out float v_density;
 void main() {
-    gl_Position = vec4(in_particle.xy, 0.0, 1.0);
+    gl_Position = vec4(in_particle.xy * u_world_scale_inv, 0.0, 1.0);
     v_density = in_particle.z;
     float density01 = clamp((in_particle.z - 0.85) / 0.35, 0.0, 1.0);
-    gl_PointSize = mix(4.0, 8.0, density01);
+    gl_PointSize = u_point_size_px * mix(0.8, 1.4, density01);
 }
 )";
 
@@ -168,10 +167,7 @@ static float2 screen_to_world(double x, double y, int width, int height) {
     float ndc_x = static_cast<float>((x / static_cast<double>(width)) * 2.0 - 1.0);
     float ndc_y =
         static_cast<float>(1.0 - (y / static_cast<double>(height)) * 2.0);
-    const glm::mat4 projection(1.0f);
-    const glm::mat4 inv_projection = glm::inverse(projection);
-    glm::vec4 world = inv_projection * glm::vec4(ndc_x, ndc_y, 0.0f, 1.0f);
-    return make_float2(world.x / world.w, world.y / world.w);
+    return make_float2(ndc_x * kWorldHalfExtent, ndc_y * kWorldHalfExtent);
 }
 
 static MouseState build_mouse_state(MouseController& mouse, int width, int height,
@@ -269,6 +265,10 @@ int main() {
     glDeleteShader(vs);
     glDeleteShader(fs);
 
+    GLint u_world_scale_inv_loc = glGetUniformLocation(prog, "u_world_scale_inv");
+    GLint u_point_size_px_loc = glGetUniformLocation(prog, "u_point_size_px");
+    constexpr float kParticleRadiusWorld = 0.0075f;
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -328,6 +328,11 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(prog);
+        float world_scale_inv = 1.0f / kWorldHalfExtent;
+        float point_size_px =
+            kParticleRadiusWorld * world_scale_inv * static_cast<float>(h);
+        glUniform1f(u_world_scale_inv_loc, world_scale_inv);
+        glUniform1f(u_point_size_px_loc, point_size_px);
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, particle_count);
         glBindVertexArray(0);
