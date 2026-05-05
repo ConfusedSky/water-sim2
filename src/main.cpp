@@ -844,7 +844,7 @@ int main() {
                 ImGui::TextColored({1.0f, 0.3f, 0.3f, 1.0f}, "%s",
                                    scene_load_error.c_str());
             if (ImGui::Button("Reset")) {
-                reset_simulation();
+                load_scene(active_scene_idx);
                 accumulator = kFixedDt;
             }
             ImGui::End();

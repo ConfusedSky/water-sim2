@@ -85,8 +85,15 @@ bool load_scene_json(const std::string& path, SceneDesc& out, std::string& error
                 obs.circle = {ob.value("cx", 0.0f), ob.value("cy", 0.0f), ob.value("r", 0.5f)};
             } else if (type == "box") {
                 obs.type = ObstacleType::Box;
-                obs.box = {ob.value("cx", 0.0f), ob.value("cy", 0.0f),
-                           ob.value("hw", 0.5f), ob.value("hh", 0.5f)};
+                // JSON: x/y = top-left corner (min-x, max-y), w/h = size
+                float x = ob.value("x", 0.0f);
+                float y = ob.value("y", 0.0f);
+                float w = ob.value("w", 1.0f);
+                float h = ob.value("h", 1.0f);
+                obs.box.cx = x + w * 0.5f;
+                obs.box.cy = y - h * 0.5f;
+                obs.box.hw = w * 0.5f;
+                obs.box.hh = h * 0.5f;
             } else {
                 error = "unknown obstacle type: " + type;
                 return false;
