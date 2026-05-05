@@ -67,9 +67,9 @@ SimParams g_params{};
 
 // SDF obstacle texture (valid when g_has_sdf is true)
 __constant__ cudaTextureObject_t d_sdf_tex;
-static cudaArray_t         g_sdf_array    = nullptr;
+static cudaArray_t g_sdf_array = nullptr;
 static cudaTextureObject_t g_sdf_tex_host = 0;
-static bool                g_has_sdf      = false;
+static bool g_has_sdf = false;
 
 float2 *g_pos = nullptr;
 float2 *g_vel = nullptr;
@@ -601,10 +601,11 @@ __global__ void enforce_box_boundary_kernel(float2 *pos, float2 *vel, int n,
   vel[i] = v;
 }
 
-__global__ void enforce_sdf_boundary_kernel(float2* pos, float2* vel, int n,
-                                              int reflect_velocity) {
+__global__ void enforce_sdf_boundary_kernel(float2 *pos, float2 *vel, int n,
+                                            int reflect_velocity) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= n) return;
+  if (i >= n)
+    return;
 
   float2 p = pos[i];
   float W = c_params.box_max.x;
@@ -613,14 +614,18 @@ __global__ void enforce_sdf_boundary_kernel(float2* pos, float2* vel, int n,
 
   float d = tex2D<float>(d_sdf_tex, u, v);
   float r = c_params.particle_radius;
-  if (d >= r) return;
+  if (d >= r)
+    return;
 
   // Gradient via central differences (texture coords)
   float eps = 1.5f / static_cast<float>(c_params.sdf_resolution);
-  float gx = tex2D<float>(d_sdf_tex, u + eps, v) - tex2D<float>(d_sdf_tex, u - eps, v);
-  float gy = tex2D<float>(d_sdf_tex, u, v + eps) - tex2D<float>(d_sdf_tex, u, v - eps);
+  float gx =
+      tex2D<float>(d_sdf_tex, u + eps, v) - tex2D<float>(d_sdf_tex, u - eps, v);
+  float gy =
+      tex2D<float>(d_sdf_tex, u, v + eps) - tex2D<float>(d_sdf_tex, u, v - eps);
   float glen = sqrtf(gx * gx + gy * gy);
-  if (glen < 1.0e-6f) return;
+  if (glen < 1.0e-6f)
+    return;
 
   float2 normal = make_float2(gx / glen, gy / glen);
   float pen = r - d;
@@ -750,9 +755,9 @@ void upload_params() {
   g_params = SimParams{};
   g_params.box_min = make_float2(-kWorldHalfExtent, -kWorldHalfExtent);
   g_params.box_max = make_float2(kWorldHalfExtent, kWorldHalfExtent);
-  g_params.gravity = -6.5f;
+  g_params.gravity = -8.5f;
   g_params.particle_radius = 0.0075f;
-  g_params.kernel_radius = 0.05f;
+  g_params.kernel_radius = 0.04f;
   g_params.rest_density = estimate_rest_density(g_params.kernel_radius) * 0.95f;
   g_params.lambda_epsilon = 300.0f;
   g_params.tensile_k = 0.000001f;
@@ -760,8 +765,8 @@ void upload_params() {
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 0.9996f;
   g_params.boundary_bounce = 0.2f;
-  g_params.viscosity_c = 0.000025f;
-  g_params.vorticity_eps = 0.0001f;
+  g_params.viscosity_c = 0.000015f;
+  g_params.vorticity_eps = 0.00005f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 100.0f;
   g_params.solver_iterations = kSolverIterations;
@@ -824,7 +829,7 @@ float bits_to_float(unsigned int bits) {
 
 } // namespace
 
-void clear_sdf();  // forward declaration
+void clear_sdf(); // forward declaration
 
 void init_simulation() {
   if (g_initialized) {
@@ -994,8 +999,8 @@ void step_simulation(float dt, const MouseState &mouse,
   enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_predicted, g_vel,
                                                             kParticleCount, 0);
   if (g_has_sdf) {
-    enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_predicted, g_vel,
-                                                              kParticleCount, 0);
+    enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_predicted, g_vel, kParticleCount, 0);
   }
 
   int num_cells = g_params.grid_w * g_params.grid_h;
@@ -1016,8 +1021,8 @@ void step_simulation(float dt, const MouseState &mouse,
     enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(
         g_predicted, g_vel, kParticleCount, 0);
     if (g_has_sdf) {
-      enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_predicted, g_vel,
-                                                                kParticleCount, 0);
+      enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(
+          g_predicted, g_vel, kParticleCount, 0);
     }
   }
 
@@ -1026,8 +1031,8 @@ void step_simulation(float dt, const MouseState &mouse,
   enforce_box_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_vel,
                                                             kParticleCount, 1);
   if (g_has_sdf) {
-    enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(g_pos, g_vel,
-                                                              kParticleCount, 1);
+    enforce_sdf_boundary_kernel<<<blocks, kThreadsPerBlock>>>(
+        g_pos, g_vel, kParticleCount, 1);
   }
 
   run_post_step_passes(blocks, dt);
@@ -1036,36 +1041,36 @@ void step_simulation(float dt, const MouseState &mouse,
   CUDA_CHECK(cudaGetLastError());
 }
 
-void set_initial_positions(const std::vector<float2>& positions) {
+void set_initial_positions(const std::vector<float2> &positions) {
   if (static_cast<int>(positions.size()) < kParticleCount) {
     std::fprintf(stderr, "set_initial_positions: need %d, got %zu\n",
                  kParticleCount, positions.size());
     return;
   }
   g_initial_positions.assign(positions.begin(),
-                              positions.begin() + kParticleCount);
+                             positions.begin() + kParticleCount);
 }
 
-void upload_sdf(const float* pixels, int resolution) {
+void upload_sdf(const float *pixels, int resolution) {
   clear_sdf();
   cudaChannelFormatDesc ch = cudaCreateChannelDesc<float>();
   CUDA_CHECK(cudaMallocArray(&g_sdf_array, &ch, resolution, resolution));
-  CUDA_CHECK(cudaMemcpy2DToArray(g_sdf_array, 0, 0, pixels,
-                                  resolution * sizeof(float),
-                                  resolution * sizeof(float), resolution,
-                                  cudaMemcpyHostToDevice));
+  CUDA_CHECK(cudaMemcpy2DToArray(
+      g_sdf_array, 0, 0, pixels, resolution * sizeof(float),
+      resolution * sizeof(float), resolution, cudaMemcpyHostToDevice));
   cudaResourceDesc rd{};
   rd.resType = cudaResourceTypeArray;
   rd.res.array.array = g_sdf_array;
   cudaTextureDesc td{};
   td.addressMode[0] = cudaAddressModeClamp;
   td.addressMode[1] = cudaAddressModeClamp;
-  td.filterMode     = cudaFilterModeLinear;
-  td.readMode       = cudaReadModeElementType;
+  td.filterMode = cudaFilterModeLinear;
+  td.readMode = cudaReadModeElementType;
   td.normalizedCoords = 1;
   CUDA_CHECK(cudaCreateTextureObject(&g_sdf_tex_host, &rd, &td, nullptr));
   g_has_sdf = true;
-  CUDA_CHECK(cudaMemcpyToSymbol(d_sdf_tex, &g_sdf_tex_host, sizeof(g_sdf_tex_host)));
+  CUDA_CHECK(
+      cudaMemcpyToSymbol(d_sdf_tex, &g_sdf_tex_host, sizeof(g_sdf_tex_host)));
   g_params.sdf_resolution = resolution;
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
