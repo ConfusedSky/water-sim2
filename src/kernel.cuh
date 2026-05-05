@@ -2,6 +2,8 @@
 
 #include <vector_types.h>
 
+#include "scenes.h"
+
 struct SimulationStats {
     float avg_density;
     float max_density;
@@ -39,5 +41,8 @@ SimulationStats get_simulation_stats();
 
 TunableParams get_tunable_params();
 void set_tunable_params(const TunableParams& params);
+
+SceneId get_active_scene();
+void set_active_scene(SceneId id);
 
 void step_simulation(float dt, const MouseState& mouse, float4* render_particles);

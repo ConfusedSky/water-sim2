@@ -309,6 +309,19 @@ int main() {
             ImGui::Text("Right drag: push fluid");
             ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 0.30f);
             ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 32.0f);
+
+            int scene_idx = static_cast<int>(get_active_scene());
+            const char* scene_items[kSceneCount] = {
+                scene_name(SceneId::ColumnLeft),
+                scene_name(SceneId::WideBlock),
+                scene_name(SceneId::TwoColumns),
+            };
+            ImGui::PushItemWidth(160.0f);
+            if (ImGui::Combo("scene", &scene_idx, scene_items, kSceneCount)) {
+                set_active_scene(static_cast<SceneId>(scene_idx));
+                accumulator = kFixedDt;
+            }
+            ImGui::PopItemWidth();
             if (ImGui::Button("Reset")) {
                 reset_simulation();
                 accumulator = kFixedDt;

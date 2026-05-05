@@ -58,6 +58,7 @@ target_link_libraries(imgui_lib PUBLIC glfw)
 add_executable(water_sim2
     src/main.cpp
     src/kernel.cu
+    src/scenes.cpp
 )
 target_link_libraries(water_sim2 PRIVATE
     CUDA::cudart

@@ -19,9 +19,7 @@
 
 namespace {
 
-constexpr int kParticlesX = 32;
-constexpr int kParticlesY = 64;
-constexpr int kParticleCount = kParticlesX * kParticlesY;
+constexpr int kParticleCount = kSceneParticleCount;
 constexpr int kMaxNeighbors = 64;
 constexpr int kThreadsPerBlock = 128;
 constexpr int kSolverIterations = 4;
@@ -70,6 +68,7 @@ DeviceStats *g_stats = nullptr;
 bool g_initialized = false;
 SimulationStats g_last_stats{};
 std::vector<float2> g_initial_positions;
+SceneId g_active_scene = SceneId::ColumnLeft;
 
 __host__ __device__ inline float2 operator+(float2 a, float2 b) {
   return make_float2(a.x + b.x, a.y + b.y);
@@ -393,20 +392,7 @@ void allocate_simulation_buffers() {
 }
 
 void seed_initial_positions() {
-  g_initial_positions.resize(kParticleCount);
-
-  constexpr float spacing = 0.019f;
-  constexpr float start_x = -0.80f;
-  constexpr float start_y = -0.35f;
-
-  for (int y = 0; y < kParticlesY; ++y) {
-    for (int x = 0; x < kParticlesX; ++x) {
-      int i = y * kParticlesX + x;
-      float offset_x = (y & 1) ? spacing * 0.15f : 0.0f;
-      g_initial_positions[i] =
-          make_float2(start_x + x * spacing + offset_x, start_y + y * spacing);
-    }
-  }
+  seed_scene(g_active_scene, g_initial_positions);
 }
 
 float host_poly6_weight(float2 delta, float kernel_radius) {
@@ -549,6 +535,17 @@ void shutdown_simulation() {
 int get_particle_count() { return kParticleCount; }
 
 int get_solver_iterations() { return g_params.solver_iterations; }
+
+SceneId get_active_scene() { return g_active_scene; }
+
+void set_active_scene(SceneId id) {
+  g_active_scene = id;
+  if (!g_initialized) {
+    return;
+  }
+  seed_initial_positions();
+  reset_simulation();
+}
 
 TunableParams get_tunable_params() {
   TunableParams t{};
