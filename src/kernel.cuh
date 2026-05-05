@@ -29,6 +29,7 @@ struct TunableParams {
     float gravity;
     float velocity_damping;
     float boundary_bounce;
+    float viscosity_c;
 };
 
 void init_simulation();

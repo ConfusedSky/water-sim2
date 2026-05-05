@@ -129,7 +129,7 @@ struct MouseController {
     bool left_down = false;
     bool right_down = false;
     float radius = 0.14f;
-    float strength = 12.0f;
+    float strength = 32.0f;
     float2 prev_world = make_float2(0.0f, 0.0f);
     bool has_prev_world = false;
 };
@@ -360,8 +360,8 @@ int main() {
             ImGui::Separator();
             ImGui::Text("Left drag: pull fluid");
             ImGui::Text("Right drag: push fluid");
-            ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 0.30f);
-            ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 32.0f);
+            ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 1.0f);
+            ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 1000.0f);
 
             int scene_idx = static_cast<int>(get_active_scene());
             const char* scene_items[kSceneCount] = {
@@ -410,6 +410,8 @@ int main() {
                                          0.0f, 0.0f, "%.4f");
             changed |= ImGui::InputFloat("boundary bounce", &tp.boundary_bounce,
                                          0.0f, 0.0f, "%.3f");
+            changed |= ImGui::InputFloat("viscosity_c (XSPH)", &tp.viscosity_c,
+                                         0.0f, 0.0f, "%.6f");
             ImGui::PopItemWidth();
             if (changed) {
                 set_tunable_params(tp);
