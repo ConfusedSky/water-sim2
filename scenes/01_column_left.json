@@ -1,0 +1,7 @@
+{
+  "name": "Column (left)",
+  "spawn_rects": [
+    { "x": -2.70, "y": -2.70, "width": 1.216, "height": 4.864 }
+  ],
+  "obstacles": []
+}

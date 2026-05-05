@@ -674,12 +674,45 @@ int main() {
     ObstacleRenderer obstacle_renderer{};
     obstacle_renderer.init();
 
+    // Scene state — all scenes driven by JSON files
     SceneDesc current_scene{};
     std::vector<std::string> scene_files;
-    int selected_scene_file = -1;
-    bool scene_files_loaded = false;
+    std::vector<std::string> scene_names;   // display names parallel to scene_files
+    int active_scene_idx = 0;
     std::string scene_load_error;
-    static char scene_load_error_buf[256] = {};
+
+    scene_files = list_scene_files(get_scenes_dir());
+    for (const auto& f : scene_files)
+        scene_names.push_back(fs::path(f).stem().string());
+
+    // Helper: load a scene by index into the current state
+    auto load_scene = [&](int idx) {
+        if (idx < 0 || idx >= static_cast<int>(scene_files.size())) return;
+        SceneDesc desc;
+        std::string err;
+        if (!load_scene_json(scene_files[idx], desc, err)) {
+            scene_load_error = err;
+            return;
+        }
+        std::vector<float> sdf_px;
+        bake_sdf(desc, kWorldHalfExtent, kSdfResolution, sdf_px);
+        if (desc.obstacles.empty())
+            clear_sdf();
+        else
+            upload_sdf(sdf_px.data(), kSdfResolution);
+        std::vector<float2> init_pos;
+        seed_from_scene_desc(desc, get_particle_count(), init_pos);
+        set_initial_positions(init_pos);
+        current_scene = std::move(desc);
+        obstacle_renderer.upload(build_obstacle_mesh(current_scene));
+        reset_simulation();
+        scene_load_error.clear();
+    };
+
+    // Auto-load first scene on startup
+    if (!scene_files.empty()) {
+        load_scene(0);
+    }
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -790,69 +823,29 @@ int main() {
             ImGui::SliderFloat("Mouse radius", &mouse.radius, 0.05f, 1.0f);
             ImGui::SliderFloat("Mouse strength", &mouse.strength, 2.0f, 200.0f);
 
-            int scene_idx = static_cast<int>(get_active_scene());
-            const char* scene_items[kSceneCount] = {
-                scene_name(SceneId::ColumnLeft),
-                scene_name(SceneId::WideBlock),
-                scene_name(SceneId::TwoColumns),
-            };
-            ImGui::PushItemWidth(160.0f);
-            if (ImGui::Combo("scene", &scene_idx, scene_items, kSceneCount)) {
-                set_active_scene(static_cast<SceneId>(scene_idx));
-                current_scene = {};
-                selected_scene_file = -1;
-                obstacle_renderer.upload({});
-                accumulator = kFixedDt;
+            if (!scene_files.empty()) {
+                // Build parallel c-string array for the combo
+                std::vector<const char*> name_ptrs;
+                name_ptrs.reserve(scene_names.size());
+                for (const auto& n : scene_names) name_ptrs.push_back(n.c_str());
+
+                ImGui::PushItemWidth(170.0f);
+                if (ImGui::Combo("scene", &active_scene_idx,
+                                 name_ptrs.data(),
+                                 static_cast<int>(name_ptrs.size()))) {
+                    load_scene(active_scene_idx);
+                    accumulator = kFixedDt;
+                }
+                ImGui::PopItemWidth();
+            } else {
+                ImGui::TextDisabled("(no scenes/*.json found)");
             }
-            ImGui::PopItemWidth();
+            if (!scene_load_error.empty())
+                ImGui::TextColored({1.0f, 0.3f, 0.3f, 1.0f}, "%s",
+                                   scene_load_error.c_str());
             if (ImGui::Button("Reset")) {
                 reset_simulation();
                 accumulator = kFixedDt;
-            }
-
-            ImGui::Separator();
-            ImGui::Text("JSON Scenes");
-            if (!scene_files_loaded || ImGui::Button("Refresh##scenes")) {
-                scene_files = list_scene_files(get_scenes_dir());
-                scene_files_loaded = true;
-            }
-            if (scene_files.empty()) {
-                ImGui::TextDisabled("(no .json files in scenes/)");
-            } else {
-                ImGui::BeginChild("scene_list", ImVec2(0, 100), true);
-                for (int i = 0; i < static_cast<int>(scene_files.size()); ++i) {
-                    std::string label = fs::path(scene_files[i]).stem().string();
-                    if (ImGui::Selectable(label.c_str(), selected_scene_file == i))
-                        selected_scene_file = i;
-                }
-                ImGui::EndChild();
-                if (selected_scene_file >= 0) {
-                    if (ImGui::Button("Load##scenefile")) {
-                        SceneDesc desc;
-                        std::string err;
-                        if (load_scene_json(scene_files[selected_scene_file], desc, err)) {
-                            std::vector<float> sdf_px;
-                            bake_sdf(desc, kWorldHalfExtent, kSdfResolution, sdf_px);
-                            upload_sdf(sdf_px.data(), kSdfResolution);
-                            std::vector<float2> init_pos;
-                            seed_from_scene_desc(desc, get_particle_count(), init_pos);
-                            set_initial_positions(init_pos);
-                            current_scene = std::move(desc);
-                            obstacle_renderer.upload(build_obstacle_mesh(current_scene));
-                            reset_simulation();
-                            accumulator = kFixedDt;
-                            scene_load_error.clear();
-                        } else {
-                            scene_load_error = err;
-                        }
-                    }
-                }
-                if (!scene_load_error.empty()) {
-                    ImGui::TextColored({1.0f, 0.3f, 0.3f, 1.0f}, "%s", scene_load_error.c_str());
-                }
-                if (!current_scene.name.empty()) {
-                    ImGui::Text("Active: %s", current_scene.name.c_str());
-                }
             }
             ImGui::End();
         }
