@@ -25,7 +25,6 @@ namespace {
 constexpr int kParticleCount = kSceneParticleCount;
 constexpr int kMaxNeighbors = 64;
 constexpr int kThreadsPerBlock = 128;
-constexpr int kSolverIterations = 4;
 constexpr float kPi = 3.14159265358979323846f;
 constexpr int kMouseButtonNone = 0;
 constexpr int kMouseButtonDrag = 1;
@@ -765,11 +764,11 @@ void upload_params() {
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 0.9996f;
   g_params.boundary_bounce = 0.2f;
-  g_params.viscosity_c = 0.000015f;
+  g_params.viscosity_c = 0.000005f;
   g_params.vorticity_eps = 0.00005f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 100.0f;
-  g_params.solver_iterations = kSolverIterations;
+  g_params.solver_iterations = 8;
   g_params.sdf_resolution = 512;
   compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
