@@ -315,6 +315,42 @@ int main() {
             }
             ImGui::End();
         }
+
+        {
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(w) - 10.0f, 10.0f),
+                                    ImGuiCond_FirstUseEver, ImVec2(1.0f, 0.0f));
+            ImGui::SetNextWindowSize(ImVec2(280.0f, 0.0f), ImGuiCond_FirstUseEver);
+            ImGui::Begin("parameters");
+
+            TunableParams tp = get_tunable_params();
+            bool changed = false;
+            ImGui::PushItemWidth(120.0f);
+            changed |= ImGui::InputFloat("rest density", &tp.rest_density, 0.0f, 0.0f,
+                                         "%.2f");
+            changed |= ImGui::InputFloat("kernel radius", &tp.kernel_radius, 0.0f, 0.0f,
+                                         "%.4f");
+            changed |= ImGui::InputInt("solver iterations", &tp.solver_iterations, 0, 0);
+            changed |= ImGui::InputFloat("lambda_epsilon", &tp.lambda_epsilon, 0.0f, 0.0f,
+                                         "%.4f");
+            changed |= ImGui::InputFloat("tensile_k", &tp.tensile_k, 0.0f, 0.0f,
+                                         "%.6f");
+            changed |= ImGui::InputFloat("tensile_n", &tp.tensile_n, 0.0f, 0.0f,
+                                         "%.3f");
+            changed |= ImGui::InputFloat("tensile_q", &tp.tensile_q, 0.0f, 0.0f,
+                                         "%.3f");
+            changed |= ImGui::InputFloat("gravity", &tp.gravity, 0.0f, 0.0f,
+                                         "%.3f");
+            changed |= ImGui::InputFloat("velocity damping", &tp.velocity_damping,
+                                         0.0f, 0.0f, "%.4f");
+            changed |= ImGui::InputFloat("boundary bounce", &tp.boundary_bounce,
+                                         0.0f, 0.0f, "%.3f");
+            ImGui::PopItemWidth();
+            if (changed) {
+                set_tunable_params(tp);
+            }
+            ImGui::End();
+        }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

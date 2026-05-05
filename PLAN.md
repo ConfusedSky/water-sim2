@@ -64,7 +64,8 @@
 ## Phase 4 — 2D polish
 - Vorticity confinement (eq. 15–16)
 - XSPH viscosity (eq. 17)
-- ImGui panel for: rest density, kernel radius, solver iterations, viscosity, vorticity epsilon
+- ImGui panel for parameter tuning, exposing: rest density, kernel radius, solver iterations, viscosity, vorticity epsilon, `lambda_epsilon` (CFM relaxation), and the tensile-instability terms (`tensile_k`, `tensile_n`, `tensile_q`)
+  - Use text-box inputs (`ImGui::InputFloat` / `InputInt`) rather than sliders, so exact values can be typed and parameters that span several orders of magnitude (e.g. `tensile_k ≈ 3e-4`, `lambda_epsilon ≈ 400`) are easy to dial in
 - Parameter profiles: save/load named presets to/from JSON on disk (e.g., "calm pool", "splashy", "viscous"); ImGui dropdown to switch profiles, "Save as…" and "Delete" buttons; profiles stored in `profiles/` next to the binary
 - Optional: screen-space fluid surface (depth pass + bilateral blur + normal reconstruction)
 
