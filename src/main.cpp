@@ -13,7 +13,8 @@
 
 #include "kernel.cuh"
 
-constexpr int N_POINTS = 4096;
+constexpr float kFixedDt = 1.0f / 240.0f;
+constexpr int kMaxSubsteps = 16;
 
 #define CUDA_CHECK(call)                                                       \
     do {                                                                       \
@@ -26,19 +27,26 @@ constexpr int N_POINTS = 4096;
     } while (0)
 
 static const char* VS_SRC = R"(#version 450 core
-layout(location = 0) in vec2 in_pos;
+layout(location = 0) in vec4 in_particle;
+out float v_density;
 void main() {
-    gl_Position = vec4(in_pos, 0.0, 1.0);
-    gl_PointSize = 4.0;
+    gl_Position = vec4(in_particle.xy, 0.0, 1.0);
+    v_density = in_particle.z;
+    float density01 = clamp((in_particle.z - 0.85) / 0.35, 0.0, 1.0);
+    gl_PointSize = mix(4.0, 8.0, density01);
 }
 )";
 
 static const char* FS_SRC = R"(#version 450 core
+in float v_density;
 out vec4 frag;
 void main() {
     vec2 c = gl_PointCoord * 2.0 - 1.0;
     if (dot(c, c) > 1.0) discard;
-    frag = vec4(0.45, 0.75, 1.0, 1.0);
+    float density01 = clamp((v_density - 0.85) / 0.35, 0.0, 1.0);
+    vec3 base = mix(vec3(0.20, 0.48, 0.82), vec3(0.72, 0.90, 1.00), density01);
+    float edge = smoothstep(1.0, 0.25, dot(c, c));
+    frag = vec4(base, edge);
 }
 )";
 
@@ -83,7 +91,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 0", nullptr, nullptr);
+    GLFWwindow* win = glfwCreateWindow(1024, 1024, "water-sim2 — Phase 1", nullptr, nullptr);
     if (!win) {
         std::fprintf(stderr, "glfwCreateWindow failed\n");
         glfwTerminate();
@@ -105,15 +113,18 @@ int main() {
     std::printf("CUDA device: %s (cc %d.%d), %zu MB\n", prop.name, prop.major,
                 prop.minor, prop.totalGlobalMem / (1024 * 1024));
     CUDA_CHECK(cudaSetDevice(dev));
+    init_simulation();
+    const int particle_count = get_particle_count();
 
     GLuint vao = 0, vbo = 0;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, N_POINTS * sizeof(float) * 2, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, particle_count * sizeof(float) * 4, nullptr,
+                 GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, nullptr);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
     glBindVertexArray(0);
 
     cudaGraphicsResource* cuda_vbo = nullptr;
@@ -132,19 +143,35 @@ int main() {
     ImGui_ImplOpenGL3_Init("#version 450 core");
 
     glEnable(GL_PROGRAM_POINT_SIZE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    double t0 = glfwGetTime();
+    double last_time = glfwGetTime();
+    double accumulator = kFixedDt;
+    SimulationStats stats{};
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
 
-        float t = static_cast<float>(glfwGetTime() - t0);
+        double now = glfwGetTime();
+        double frame_dt = now - last_time;
+        last_time = now;
+        if (frame_dt > 0.05) {
+            frame_dt = 0.05;
+        }
+        accumulator += frame_dt;
 
-        float2* dptr = nullptr;
+        float4* dptr = nullptr;
         size_t bytes = 0;
         CUDA_CHECK(cudaGraphicsMapResources(1, &cuda_vbo, 0));
         CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(reinterpret_cast<void**>(&dptr), &bytes, cuda_vbo));
-        launch_update_points(dptr, N_POINTS, t);
+        int substeps = 0;
+        while (accumulator >= kFixedDt && substeps < kMaxSubsteps) {
+            step_simulation(kFixedDt, dptr);
+            accumulator -= kFixedDt;
+            ++substeps;
+        }
         CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuda_vbo, 0));
+        stats = get_simulation_stats();
 
         int w = 0, h = 0;
         glfwGetFramebufferSize(win, &w, &h);
@@ -154,7 +181,7 @@ int main() {
 
         glUseProgram(prog);
         glBindVertexArray(vao);
-        glDrawArrays(GL_POINTS, 0, N_POINTS);
+        glDrawArrays(GL_POINTS, 0, particle_count);
         glBindVertexArray(0);
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -170,7 +197,15 @@ int main() {
                              ImGuiWindowFlags_NoNav);
             ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
             ImGui::Text("CUDA: %s", prop.name);
-            ImGui::Text("Points: %d", N_POINTS);
+            ImGui::Text("Particles: %d", particle_count);
+            ImGui::Text("Solver iterations: %d", get_solver_iterations());
+            ImGui::Text("Avg density: %.2f", stats.avg_density);
+            ImGui::Text("Max density: %.2f", stats.max_density);
+            ImGui::Text("Avg speed: %.3f", stats.avg_speed);
+            if (ImGui::Button("Reset")) {
+                reset_simulation();
+                accumulator = kFixedDt;
+            }
             ImGui::End();
         }
         ImGui::Render();
@@ -180,6 +215,7 @@ int main() {
     }
 
     CUDA_CHECK(cudaGraphicsUnregisterResource(cuda_vbo));
+    shutdown_simulation();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
