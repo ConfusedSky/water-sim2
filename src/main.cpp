@@ -13,8 +13,44 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <deque>
 
 #include "kernel.cuh"
+
+struct FrameSample {
+    double t;
+    float sim_ms;
+    float render_ms;
+};
+
+struct FrameTimingWindow {
+    static constexpr double kWindowSeconds = 1.0;
+    std::deque<FrameSample> samples;
+
+    void push(double now, float sim_ms, float render_ms) {
+        samples.push_back({now, sim_ms, render_ms});
+        while (!samples.empty() && now - samples.front().t > kWindowSeconds) {
+            samples.pop_front();
+        }
+    }
+
+    void summarize(float& avg_sim, float& max_sim, float& avg_render,
+                   float& max_render) const {
+        avg_sim = max_sim = avg_render = max_render = 0.0f;
+        if (samples.empty()) {
+            return;
+        }
+        double sum_sim = 0.0, sum_render = 0.0;
+        for (const FrameSample& s : samples) {
+            sum_sim += s.sim_ms;
+            sum_render += s.render_ms;
+            if (s.sim_ms > max_sim) max_sim = s.sim_ms;
+            if (s.render_ms > max_render) max_render = s.render_ms;
+        }
+        avg_sim = static_cast<float>(sum_sim / samples.size());
+        avg_render = static_cast<float>(sum_render / samples.size());
+    }
+};
 
 constexpr float kFixedDt = 1.0f / 240.0f;
 constexpr int kMaxSubsteps = 16;
@@ -246,6 +282,8 @@ int main() {
     double last_time = glfwGetTime();
     double accumulator = kFixedDt;
     SimulationStats stats{};
+    FrameTimingWindow frame_window{};
+    float last_render_ms = 0.0f;
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
 
@@ -267,6 +305,7 @@ int main() {
             build_mouse_state(mouse, w, h, static_cast<float>(frame_dt),
                               ImGui::GetIO().WantCaptureMouse);
 
+        double sim_start = glfwGetTime();
         float4* dptr = nullptr;
         size_t bytes = 0;
         CUDA_CHECK(cudaGraphicsMapResources(1, &cuda_vbo, 0));
@@ -279,7 +318,11 @@ int main() {
         }
         CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuda_vbo, 0));
         stats = get_simulation_stats();
+        double sim_end = glfwGetTime();
+        float sim_ms = static_cast<float>((sim_end - sim_start) * 1000.0);
+        frame_window.push(sim_end, sim_ms, last_render_ms);
 
+        double render_start = glfwGetTime();
         glViewport(0, 0, w, h);
         glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -301,6 +344,11 @@ int main() {
             ImGui::Text("CUDA: %s", prop.name);
             ImGui::Text("Particles: %d", particle_count);
             ImGui::Text("Solver iterations: %d", get_solver_iterations());
+            float avg_sim = 0.0f, max_sim = 0.0f;
+            float avg_render = 0.0f, max_render = 0.0f;
+            frame_window.summarize(avg_sim, max_sim, avg_render, max_render);
+            ImGui::Text("Sim    1s avg/max: %.2f / %.2f ms", avg_sim, max_sim);
+            ImGui::Text("Render 1s avg/max: %.2f / %.2f ms", avg_render, max_render);
             ImGui::Text("Avg density: %.2f", stats.avg_density);
             ImGui::Text("Max density: %.2f", stats.max_density);
             ImGui::Text("Avg speed: %.3f", stats.avg_speed);
@@ -373,6 +421,8 @@ int main() {
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        double render_end = glfwGetTime();
+        last_render_ms = static_cast<float>((render_end - render_start) * 1000.0);
 
         glfwSwapBuffers(win);
     }
