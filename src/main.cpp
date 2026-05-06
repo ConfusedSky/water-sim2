@@ -129,6 +129,25 @@ void main() {
 }
 )";
 
+static const char* BACKGROUND_FS = R"(#version 450 core
+in vec2 v_uv;
+uniform float u_scale;
+uniform float u_aspect;
+uniform vec3 u_color0;
+uniform vec3 u_color1;
+out vec4 frag;
+
+vec3 checker_color(vec2 uv, float scale, float aspect, vec3 c0, vec3 c1) {
+    vec2 g = floor(vec2(uv.x * aspect, uv.y) * scale);
+    float c = mod(g.x + g.y, 2.0);
+    return mix(c0, c1, c);
+}
+
+void main() {
+    frag = vec4(checker_color(v_uv, u_scale, u_aspect, u_color0, u_color1), 1.0);
+}
+)";
+
 static const char* SURFACE_BLUR_FS = R"(#version 450 core
 in vec2 v_uv;
 uniform sampler2D u_tex;
@@ -162,7 +181,20 @@ uniform vec3 u_base_color;
 uniform vec3 u_highlight_color;
 uniform float u_normal_strength;
 uniform float u_rim_width_px;
+uniform float u_refraction_strength;
+uniform float u_water_tint;
+uniform float u_bg_scale;
+uniform float u_bg_aspect;
+uniform vec3 u_bg_color0;
+uniform vec3 u_bg_color1;
 out vec4 frag;
+
+vec3 checker_color(vec2 uv, float scale, float aspect, vec3 c0, vec3 c1) {
+    vec2 g = floor(vec2(uv.x * aspect, uv.y) * scale);
+    float c = mod(g.x + g.y, 2.0);
+    return mix(c0, c1, c);
+}
+
 void main() {
     float d = texture(u_density, v_uv).r;
     float a = smoothstep(u_threshold - u_smooth_width,
@@ -187,8 +219,13 @@ void main() {
     vec3 H = normalize(light + vec3(0.0, 0.0, 1.0));
     float spec = pow(max(dot(n, H), 0.0), 48.0);
     float fresnel = pow(1.0 - max(n.z, 0.0), 3.0);
-    vec3 col = mix(u_base_color, u_highlight_color,
-                   diff * 0.45 + fresnel * 0.55);
+
+    vec2 refract_uv = v_uv + n.xy * u_refraction_strength;
+    vec3 bg = checker_color(refract_uv, u_bg_scale, u_bg_aspect,
+                            u_bg_color0, u_bg_color1);
+    vec3 tinted = mix(bg, u_base_color, clamp(u_water_tint, 0.0, 1.0));
+    tinted *= 0.6 + 0.4 * diff;
+    vec3 col = mix(tinted, u_highlight_color, fresnel * 0.5);
     col += vec3(1.0) * spec * 0.7;
     frag = vec4(col, a);
 }
@@ -302,6 +339,12 @@ struct SurfaceRenderer {
     GLint shade_highlight_loc = -1;
     GLint shade_normal_strength_loc = -1;
     GLint shade_rim_width_loc = -1;
+    GLint shade_refraction_strength_loc = -1;
+    GLint shade_water_tint_loc = -1;
+    GLint shade_bg_scale_loc = -1;
+    GLint shade_bg_aspect_loc = -1;
+    GLint shade_bg_color0_loc = -1;
+    GLint shade_bg_color1_loc = -1;
 };
 
 struct SurfaceParams {
@@ -312,8 +355,26 @@ struct SurfaceParams {
     int blur_iterations = 2;
     float normal_strength = 0.2f;
     float rim_width_px = 6.0f;
+    float refraction_strength = 0.02f;
+    float water_tint = 0.55f;
     float base_color[3] = {0.06f, 0.30f, 0.62f};
     float highlight_color[3] = {0.82f, 0.94f, 1.00f};
+};
+
+struct BackgroundParams {
+    bool enabled = true;
+    float scale = 16.0f;
+    float color0[3] = {0.18f, 0.18f, 0.20f};
+    float color1[3] = {0.30f, 0.30f, 0.34f};
+    float solid_color[3] = {0.05f, 0.05f, 0.08f};
+};
+
+struct BackgroundRenderer {
+    GLuint prog = 0;
+    GLint scale_loc = -1;
+    GLint aspect_loc = -1;
+    GLint color0_loc = -1;
+    GLint color1_loc = -1;
 };
 
 struct ObstacleRenderer {
@@ -424,8 +485,37 @@ static void surface_init(SurfaceRenderer& sr) {
         glGetUniformLocation(sr.shade_prog, "u_normal_strength");
     sr.shade_rim_width_loc =
         glGetUniformLocation(sr.shade_prog, "u_rim_width_px");
+    sr.shade_refraction_strength_loc =
+        glGetUniformLocation(sr.shade_prog, "u_refraction_strength");
+    sr.shade_water_tint_loc =
+        glGetUniformLocation(sr.shade_prog, "u_water_tint");
+    sr.shade_bg_scale_loc =
+        glGetUniformLocation(sr.shade_prog, "u_bg_scale");
+    sr.shade_bg_aspect_loc =
+        glGetUniformLocation(sr.shade_prog, "u_bg_aspect");
+    sr.shade_bg_color0_loc =
+        glGetUniformLocation(sr.shade_prog, "u_bg_color0");
+    sr.shade_bg_color1_loc =
+        glGetUniformLocation(sr.shade_prog, "u_bg_color1");
 
     glGenVertexArrays(1, &sr.dummy_vao);
+}
+
+static void background_init(BackgroundRenderer& br) {
+    GLuint vs = compile_shader(GL_VERTEX_SHADER, FULLSCREEN_VS);
+    GLuint fs = compile_shader(GL_FRAGMENT_SHADER, BACKGROUND_FS);
+    br.prog = link_program(vs, fs);
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    br.scale_loc = glGetUniformLocation(br.prog, "u_scale");
+    br.aspect_loc = glGetUniformLocation(br.prog, "u_aspect");
+    br.color0_loc = glGetUniformLocation(br.prog, "u_color0");
+    br.color1_loc = glGetUniformLocation(br.prog, "u_color1");
+}
+
+static void background_destroy(BackgroundRenderer& br) {
+    if (br.prog) glDeleteProgram(br.prog);
+    br.prog = 0;
 }
 
 static void surface_destroy(SurfaceRenderer& sr) {
@@ -442,6 +532,7 @@ static void surface_destroy(SurfaceRenderer& sr) {
 }
 
 static void surface_render(SurfaceRenderer& sr, const SurfaceParams& params,
+                           const BackgroundParams& bg_params,
                            GLuint particle_vao, int particle_count, int w,
                            int h, float world_scale_inv) {
     surface_resize(sr, w, h);
@@ -511,6 +602,18 @@ static void surface_render(SurfaceRenderer& sr, const SurfaceParams& params,
     glUniform1f(sr.shade_rim_width_loc, params.rim_width_px);
     glUniform3fv(sr.shade_base_loc, 1, params.base_color);
     glUniform3fv(sr.shade_highlight_loc, 1, params.highlight_color);
+    glUniform1f(sr.shade_refraction_strength_loc, params.refraction_strength);
+    glUniform1f(sr.shade_water_tint_loc, params.water_tint);
+    glUniform1f(sr.shade_bg_scale_loc, bg_params.scale);
+    float aspect = (h > 0) ? static_cast<float>(w) / static_cast<float>(h) : 1.0f;
+    glUniform1f(sr.shade_bg_aspect_loc, aspect);
+    if (bg_params.enabled) {
+        glUniform3fv(sr.shade_bg_color0_loc, 1, bg_params.color0);
+        glUniform3fv(sr.shade_bg_color1_loc, 1, bg_params.color1);
+    } else {
+        glUniform3fv(sr.shade_bg_color0_loc, 1, bg_params.solid_color);
+        glUniform3fv(sr.shade_bg_color1_loc, 1, bg_params.solid_color);
+    }
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, src_tex);
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -671,6 +774,10 @@ int main() {
     surface_init(surface);
     SurfaceParams surface_params{};
 
+    BackgroundRenderer background{};
+    background_init(background);
+    BackgroundParams bg_params{};
+
     ObstacleRenderer obstacle_renderer{};
     obstacle_renderer.init();
 
@@ -769,18 +876,33 @@ int main() {
 
         double render_start = glfwGetTime();
         float world_scale_inv = 1.0f / kWorldHalfExtent;
-        if (surface_params.enabled) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glViewport(0, 0, w, h);
-            glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            surface_render(surface, surface_params, vao, particle_count, w, h,
-                           world_scale_inv);
-        } else {
-            glViewport(0, 0, w, h);
-            glClearColor(0.05f, 0.05f, 0.08f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
 
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, w, h);
+        if (bg_params.enabled) {
+            glDisable(GL_BLEND);
+            glUseProgram(background.prog);
+            glUniform1f(background.scale_loc, bg_params.scale);
+            float bg_aspect =
+                (h > 0) ? static_cast<float>(w) / static_cast<float>(h) : 1.0f;
+            glUniform1f(background.aspect_loc, bg_aspect);
+            glUniform3fv(background.color0_loc, 1, bg_params.color0);
+            glUniform3fv(background.color1_loc, 1, bg_params.color1);
+            glBindVertexArray(surface.dummy_vao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glBindVertexArray(0);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        } else {
+            glClearColor(bg_params.solid_color[0], bg_params.solid_color[1],
+                         bg_params.solid_color[2], 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+
+        if (surface_params.enabled) {
+            surface_render(surface, surface_params, bg_params, vao,
+                           particle_count, w, h, world_scale_inv);
+        } else {
             glUseProgram(prog);
             float point_size_px =
                 kParticleRadiusWorld * world_scale_inv * static_cast<float>(h);
@@ -907,9 +1029,26 @@ int main() {
                               0.0f, 0.0f, "%.2f");
             ImGui::InputFloat("rim width (px)", &surface_params.rim_width_px,
                               0.0f, 0.0f, "%.2f");
+            ImGui::SliderFloat("refraction strength",
+                               &surface_params.refraction_strength, 0.0f, 0.1f,
+                               "%.4f");
+            ImGui::SliderFloat("water tint", &surface_params.water_tint, 0.0f,
+                               1.0f, "%.2f");
             ImGui::PopItemWidth();
             ImGui::ColorEdit3("base", surface_params.base_color);
             ImGui::ColorEdit3("highlight", surface_params.highlight_color);
+
+            ImGui::Separator();
+            ImGui::Text("background");
+            ImGui::Checkbox("checker bg", &bg_params.enabled);
+            ImGui::BeginDisabled(!bg_params.enabled);
+            ImGui::PushItemWidth(120.0f);
+            ImGui::SliderFloat("bg scale", &bg_params.scale, 1.0f, 64.0f, "%.1f");
+            ImGui::PopItemWidth();
+            ImGui::ColorEdit3("bg color 0", bg_params.color0);
+            ImGui::ColorEdit3("bg color 1", bg_params.color1);
+            ImGui::EndDisabled();
+            ImGui::ColorEdit3("bg solid", bg_params.solid_color);
             ImGui::End();
         }
 
@@ -925,6 +1064,7 @@ int main() {
     shutdown_simulation();
     obstacle_renderer.destroy();
     surface_destroy(surface);
+    background_destroy(background);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
