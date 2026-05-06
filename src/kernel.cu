@@ -308,12 +308,10 @@ __global__ void find_neighbors_grid_kernel(const float3 *positions,
   neighbor_counts[i] = cnt;
 }
 
-__global__ void compute_density_grid_kernel(const float3 *positions,
-                                            const float3 *pos_sorted,
-                                            const int *particle_index,
-                                            const int *cell_start,
-                                            const int *cell_end, float *density,
-                                            int n) {
+__global__ void
+compute_density_grid_kernel(const float3 *positions, const float3 *pos_sorted,
+                            const int *particle_index, const int *cell_start,
+                            const int *cell_end, float *density, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
@@ -384,13 +382,11 @@ __global__ void compute_lambda_kernel(const float3 *positions,
   density[i] = rho;
 }
 
-__global__ void compute_delta_p_kernel(const float3 *positions,
-                                       const float3 *pos_sorted,
-                                       const int *particle_index,
-                                       const int *neighbors,
-                                       const int *neighbor_counts,
-                                       const float *lambda, float3 *delta_p,
-                                       int n) {
+__global__ void
+compute_delta_p_kernel(const float3 *positions, const float3 *pos_sorted,
+                       const int *particle_index, const int *neighbors,
+                       const int *neighbor_counts, const float *lambda,
+                       float3 *delta_p, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
