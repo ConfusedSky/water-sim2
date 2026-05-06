@@ -289,7 +289,7 @@ __global__ void find_neighbors_grid_kernel(const float3 *positions,
           if (length2(pi - positions[j]) >= h2)
             continue;
           if (cnt < kMaxNeighbors)
-            neighbors[i * kMaxNeighbors + cnt++] = j;
+            neighbors[cnt++ * n + i] = j;
         }
       }
     }
@@ -353,7 +353,7 @@ __global__ void compute_lambda_kernel(const float3 *positions,
   int cnt = neighbor_counts[i];
 
   for (int k = 0; k < cnt; ++k) {
-    int j = neighbors[i * kMaxNeighbors + k];
+    int j = neighbors[k * n + i];
     float3 gw = spiky_gradient(pi - positions[j]);
     float3 grad_j = gw / c_params.rest_density;
     rho += poly6_weight(pi - positions[j]);
@@ -383,7 +383,7 @@ __global__ void compute_delta_p_kernel(const float3 *positions,
   int cnt = neighbor_counts[i];
 
   for (int k = 0; k < cnt; ++k) {
-    int j = neighbors[i * kMaxNeighbors + k];
+    int j = neighbors[k * n + i];
     float3 rij = pi - positions[j];
     float w = poly6_weight(rij);
     float s_corr = 0.0f;
@@ -697,7 +697,7 @@ void upload_params() {
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 1.0f;
   g_params.boundary_bounce = 0.2f;
-  g_params.viscosity_c = 0.000025f;
+  g_params.viscosity_c = 0.0000f;
   g_params.vorticity_eps = 0.0000f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 100.0f;
