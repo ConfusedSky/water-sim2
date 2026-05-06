@@ -139,7 +139,7 @@ struct Camera {
     float     yaw      = 0.5f;
     float     pitch    = 0.3f;
     float     dist     = 10.0f;
-    glm::vec3 target   = {0.0f, 0.0f, 0.0f};
+    glm::vec3 target   = {0.0f, -5.0f, 0.0f};
     float     fovy_deg = 45.0f;
     float     near_z   = 0.1f;
     float     far_z    = 200.0f;
