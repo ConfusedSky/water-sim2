@@ -1,66 +1,62 @@
 #include "scenes.h"
 
+#include <cuda_runtime.h>
 #include <cstdio>
 #include <cstdlib>
 
 namespace {
 
-constexpr float kSpacing = 0.019f;
-constexpr float kRowJitter = kSpacing * 0.15f;
+constexpr float kSpacing = 0.10f;
+constexpr float kJitter  = kSpacing * 0.15f;
 
-void fill_grid(std::vector<float2>& out, int& write_idx, float start_x,
-               float start_y, int cols, int rows) {
-    for (int y = 0; y < rows; ++y) {
-        for (int x = 0; x < cols; ++x) {
-            float offset_x = (y & 1) ? kRowJitter : 0.0f;
-            out[write_idx++] = float2{start_x + x * kSpacing + offset_x,
-                                      start_y + y * kSpacing};
+void fill_box(std::vector<float3>& out, int& idx,
+              float ox, float oy, float oz,
+              int cols, int rows, int depth) {
+    for (int z = 0; z < depth && idx < (int)out.size(); ++z)
+        for (int y = 0; y < rows && idx < (int)out.size(); ++y) {
+            float jx = (y & 1) ? kJitter : 0.0f;
+            for (int x = 0; x < cols && idx < (int)out.size(); ++x)
+                out[idx++] = make_float3(ox + x * kSpacing + jx,
+                                         oy + y * kSpacing,
+                                         oz + z * kSpacing);
         }
-    }
 }
 
-void seed_column_left(std::vector<float2>& out) {
+// 32×32×32 = 32768 — centred cube
+void seed_cube_full(std::vector<float3>& out) {
     int idx = 0;
-    fill_grid(out, idx, -2.70f, -2.70f, 64, 256);
+    fill_box(out, idx, -1.6f, -2.8f, -1.6f, 32, 32, 32);
 }
 
-void seed_wide_block(std::vector<float2>& out) {
+// 16×64×32 = 32768 — tall column on the left
+void seed_column_left(std::vector<float3>& out) {
     int idx = 0;
-    fill_grid(out, idx, -2.432f, -2.70f, 256, 64);
+    fill_box(out, idx, -2.8f, -2.9f, -1.6f, 16, 64, 32);
 }
 
-void seed_two_columns(std::vector<float2>& out) {
+// 64×8×64 = 32768 — wide shallow layer at the bottom
+void seed_wide_block(std::vector<float3>& out) {
     int idx = 0;
-    fill_grid(out, idx, -2.70f, -2.70f, 32, 256);
-    fill_grid(out, idx, 2.092f, -2.70f, 32, 256);
+    fill_box(out, idx, -3.2f, -2.9f, -3.2f, 64, 8, 64);
 }
 
-}  // namespace
+} // namespace
 
 const char* scene_name(SceneId id) {
     switch (id) {
-        case SceneId::ColumnLeft:
-            return "column (left)";
-        case SceneId::WideBlock:
-            return "wide block (bottom)";
-        case SceneId::TwoColumns:
-            return "two columns";
+        case SceneId::CubeFull:   return "cube (full)";
+        case SceneId::ColumnLeft: return "column (left)";
+        case SceneId::WideBlock:  return "wide block";
     }
     return "?";
 }
 
-void seed_scene(SceneId id, std::vector<float2>& out) {
-    out.assign(kSceneParticleCount, float2{0.0f, 0.0f});
+void seed_scene(SceneId id, std::vector<float3>& out) {
+    out.assign(kSceneParticleCount, make_float3(0.0f, 0.0f, 0.0f));
     switch (id) {
-        case SceneId::ColumnLeft:
-            seed_column_left(out);
-            return;
-        case SceneId::WideBlock:
-            seed_wide_block(out);
-            return;
-        case SceneId::TwoColumns:
-            seed_two_columns(out);
-            return;
+        case SceneId::CubeFull:   seed_cube_full(out);   return;
+        case SceneId::ColumnLeft: seed_column_left(out); return;
+        case SceneId::WideBlock:  seed_wide_block(out);  return;
     }
     std::fprintf(stderr, "seed_scene: unknown scene id %d\n", static_cast<int>(id));
     std::exit(1);
