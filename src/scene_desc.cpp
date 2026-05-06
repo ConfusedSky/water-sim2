@@ -47,20 +47,17 @@ void bake_sdf(const SceneDesc& scene, float world_half, int res,
     }
 }
 
-void seed_from_scene_desc(const SceneDesc& scene, int particle_count,
-                          std::vector<float2>& out) {
-    constexpr float kSpacing = 0.019f;
-    constexpr float kJitter  = kSpacing * 0.15f;
-    out.assign(particle_count, float2{0.0f, 0.0f});
-    int idx = 0;
+void seed_from_scene_desc(const SceneDesc& scene, std::vector<float2>& out) {
+    float sp  = scene.spacing;
+    float jit = sp * 0.15f;
+    out.clear();
     for (const SpawnRect& sr : scene.spawn_rects) {
-        int cols = std::max(1, static_cast<int>(sr.width  / kSpacing));
-        int rows = std::max(1, static_cast<int>(sr.height / kSpacing));
-        for (int row = 0; row < rows && idx < particle_count; ++row) {
-            float off_x = (row & 1) ? kJitter : 0.0f;
-            for (int col = 0; col < cols && idx < particle_count; ++col) {
-                out[idx++] = float2{sr.x + col * kSpacing + off_x,
-                                    sr.y + row * kSpacing};
+        int cols = std::max(1, static_cast<int>(sr.width  / sp));
+        int rows = std::max(1, static_cast<int>(sr.height / sp));
+        for (int row = 0; row < rows; ++row) {
+            float off_x = (row & 1) ? jit : 0.0f;
+            for (int col = 0; col < cols; ++col) {
+                out.push_back({sr.x + col * sp + off_x, sr.y + row * sp});
             }
         }
     }
@@ -72,7 +69,8 @@ bool load_scene_json(const std::string& path, SceneDesc& out, std::string& error
     try {
         json j = json::parse(f);
         out = SceneDesc{};
-        out.name = j.value("name", fs::path(path).stem().string());
+        out.name    = j.value("name", fs::path(path).stem().string());
+        out.spacing = j.value("spacing", 0.019f);
         for (const auto& sr : j.value("spawn_rects", json::array())) {
             out.spawn_rects.push_back({sr.value("x", 0.0f), sr.value("y", 0.0f),
                                        sr.value("width", 1.0f), sr.value("height", 1.0f)});

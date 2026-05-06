@@ -50,7 +50,7 @@ const char* scene_name(SceneId id) {
 }
 
 void seed_scene(SceneId id, std::vector<float2>& out) {
-    out.assign(kSceneParticleCount, float2{0.0f, 0.0f});
+    out.assign(kMaxParticleCount, float2{0.0f, 0.0f});
     switch (id) {
         case SceneId::ColumnLeft:
             seed_column_left(out);

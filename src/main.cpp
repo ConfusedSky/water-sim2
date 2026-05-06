@@ -780,14 +780,14 @@ int main() {
                 prop.minor, prop.totalGlobalMem / (1024 * 1024));
     CUDA_CHECK(cudaSetDevice(dev));
     init_simulation();
-    const int particle_count = get_particle_count();
+    int particle_count = 0;
 
     GLuint vao = 0, vbo = 0;
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, particle_count * sizeof(float) * 4, nullptr,
+    glBufferData(GL_ARRAY_BUFFER, kMaxParticleCount * sizeof(float) * 4, nullptr,
                  GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
@@ -844,11 +844,12 @@ int main() {
         else
             upload_sdf(sdf_px.data(), kSdfResolution);
         std::vector<float2> init_pos;
-        seed_from_scene_desc(desc, get_particle_count(), init_pos);
-        set_initial_positions(init_pos);
+        seed_from_scene_desc(desc, init_pos);
+        set_initial_positions(init_pos, desc.spacing);
         current_scene = std::move(desc);
         obstacle_renderer.upload(build_obstacle_mesh(current_scene));
         reset_simulation();
+        particle_count = get_particle_count();
         scene_load_error.clear();
     };
 

@@ -47,11 +47,8 @@ SimulationStats get_simulation_stats();
 TunableParams get_tunable_params();
 void set_tunable_params(const TunableParams& params);
 
-SceneId get_active_scene();
-void set_active_scene(SceneId id);
-
 void step_simulation(float dt, const MouseState& mouse, float4* render_particles);
 
-void set_initial_positions(const std::vector<float2>& positions);
+void set_initial_positions(const std::vector<float2>& positions, float spacing);
 void upload_sdf(const float* pixels, int resolution);
 void clear_sdf();

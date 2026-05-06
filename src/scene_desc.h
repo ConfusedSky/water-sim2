@@ -21,6 +21,7 @@ struct SpawnRect {
 
 struct SceneDesc {
     std::string            name;
+    float                  spacing = 0.019f;
     std::vector<SpawnRect> spawn_rects;
     std::vector<Obstacle>  obstacles;
 };
@@ -31,5 +32,4 @@ bool load_scene_json(const std::string& path, SceneDesc& out, std::string& error
 std::vector<std::string> list_scene_files(const std::string& dir);
 void bake_sdf(const SceneDesc& scene, float world_half, int resolution,
               std::vector<float>& out_pixels);
-void seed_from_scene_desc(const SceneDesc& scene, int particle_count,
-                          std::vector<float2>& out);
+void seed_from_scene_desc(const SceneDesc& scene, std::vector<float2>& out);
