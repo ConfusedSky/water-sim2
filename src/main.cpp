@@ -182,6 +182,10 @@ uniform vec3 u_highlight_color;
 uniform float u_normal_strength;
 uniform float u_rim_width_px;
 uniform float u_refraction_strength;
+uniform int   u_refraction_mode;
+uniform float u_gradient_scale;
+uniform float u_interior_blend_width;
+uniform float u_interior_scale;
 uniform float u_water_tint;
 uniform float u_bg_scale;
 uniform float u_bg_aspect;
@@ -220,7 +224,19 @@ void main() {
     float spec = pow(max(dot(n, H), 0.0), 48.0);
     float fresnel = pow(1.0 - max(n.z, 0.0), 3.0);
 
-    vec2 refract_uv = v_uv + n.xy * u_refraction_strength;
+    vec2 refract_uv;
+    if (u_refraction_mode == 1) {
+        // Option A: gradient-based — distorts wherever density varies
+        refract_uv = v_uv - grad * u_refraction_strength * u_gradient_scale;
+    } else if (u_refraction_mode == 2) {
+        // Option B: gradient + density-proportional interior shift
+        float depth = smoothstep(u_threshold, u_threshold + u_interior_blend_width, d);
+        refract_uv = v_uv + n.xy * u_refraction_strength
+                   - grad * u_refraction_strength * depth * u_interior_scale;
+    } else {
+        // Mode 0: original surface-only (rim-masked normal)
+        refract_uv = v_uv + n.xy * u_refraction_strength;
+    }
     vec3 bg = checker_color(refract_uv, u_bg_scale, u_bg_aspect,
                             u_bg_color0, u_bg_color1);
     vec3 tinted = mix(bg, u_base_color, clamp(u_water_tint, 0.0, 1.0));
@@ -340,6 +356,10 @@ struct SurfaceRenderer {
     GLint shade_normal_strength_loc = -1;
     GLint shade_rim_width_loc = -1;
     GLint shade_refraction_strength_loc = -1;
+    GLint shade_refraction_mode_loc = -1;
+    GLint shade_gradient_scale_loc = -1;
+    GLint shade_interior_blend_width_loc = -1;
+    GLint shade_interior_scale_loc = -1;
     GLint shade_water_tint_loc = -1;
     GLint shade_bg_scale_loc = -1;
     GLint shade_bg_aspect_loc = -1;
@@ -356,13 +376,17 @@ struct SurfaceParams {
     float normal_strength = 0.2f;
     float rim_width_px = 6.0f;
     float refraction_strength = 0.02f;
+    int   refraction_mode = 0;
+    float gradient_scale = 1.0f;
+    float interior_blend_width = 0.4f;
+    float interior_scale = 3.0f;
     float water_tint = 0.55f;
     float base_color[3] = {0.06f, 0.30f, 0.62f};
     float highlight_color[3] = {0.82f, 0.94f, 1.00f};
 };
 
 struct BackgroundParams {
-    bool enabled = true;
+    bool enabled = false;
     float scale = 16.0f;
     float color0[3] = {0.18f, 0.18f, 0.20f};
     float color1[3] = {0.30f, 0.30f, 0.34f};
@@ -487,6 +511,14 @@ static void surface_init(SurfaceRenderer& sr) {
         glGetUniformLocation(sr.shade_prog, "u_rim_width_px");
     sr.shade_refraction_strength_loc =
         glGetUniformLocation(sr.shade_prog, "u_refraction_strength");
+    sr.shade_refraction_mode_loc =
+        glGetUniformLocation(sr.shade_prog, "u_refraction_mode");
+    sr.shade_gradient_scale_loc =
+        glGetUniformLocation(sr.shade_prog, "u_gradient_scale");
+    sr.shade_interior_blend_width_loc =
+        glGetUniformLocation(sr.shade_prog, "u_interior_blend_width");
+    sr.shade_interior_scale_loc =
+        glGetUniformLocation(sr.shade_prog, "u_interior_scale");
     sr.shade_water_tint_loc =
         glGetUniformLocation(sr.shade_prog, "u_water_tint");
     sr.shade_bg_scale_loc =
@@ -603,6 +635,10 @@ static void surface_render(SurfaceRenderer& sr, const SurfaceParams& params,
     glUniform3fv(sr.shade_base_loc, 1, params.base_color);
     glUniform3fv(sr.shade_highlight_loc, 1, params.highlight_color);
     glUniform1f(sr.shade_refraction_strength_loc, params.refraction_strength);
+    glUniform1i(sr.shade_refraction_mode_loc, params.refraction_mode);
+    glUniform1f(sr.shade_gradient_scale_loc, params.gradient_scale);
+    glUniform1f(sr.shade_interior_blend_width_loc, params.interior_blend_width);
+    glUniform1f(sr.shade_interior_scale_loc, params.interior_scale);
     glUniform1f(sr.shade_water_tint_loc, params.water_tint);
     glUniform1f(sr.shade_bg_scale_loc, bg_params.scale);
     float aspect = (h > 0) ? static_cast<float>(w) / static_cast<float>(h) : 1.0f;
@@ -1032,6 +1068,23 @@ int main() {
             ImGui::SliderFloat("refraction strength",
                                &surface_params.refraction_strength, 0.0f, 0.1f,
                                "%.4f");
+            ImGui::PushItemWidth(170.0f);
+            ImGui::Combo("refraction mode", &surface_params.refraction_mode,
+                         "surface only\0gradient\0gradient+depth\0");
+            ImGui::PopItemWidth();
+            if (surface_params.refraction_mode == 1) {
+                ImGui::SliderFloat("gradient scale",
+                                   &surface_params.gradient_scale, 0.0f, 10.0f,
+                                   "%.2f");
+            }
+            if (surface_params.refraction_mode == 2) {
+                ImGui::SliderFloat("interior blend width",
+                                   &surface_params.interior_blend_width, 0.01f,
+                                   2.0f, "%.3f");
+                ImGui::SliderFloat("interior scale",
+                                   &surface_params.interior_scale, 0.0f, 10.0f,
+                                   "%.2f");
+            }
             ImGui::SliderFloat("water tint", &surface_params.water_tint, 0.0f,
                                1.0f, "%.2f");
             ImGui::PopItemWidth();
