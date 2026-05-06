@@ -27,31 +27,31 @@ void fill_box(std::vector<float3>& out, int& idx,
 
 // Centred cube, 2/3 W per side  →  40×40×40 = 64 000 particles at W=6
 void seed_cube_full(std::vector<float3>& out, int& idx) {
-    const float side = kWorldHalfExtent * 2.0f / 3.0f;
+    const float side = kWorldHalfX * 2.0f / 3.0f;
     fill_box(out, idx,
-             -side * 0.5f, -kWorldHalfExtent * 0.5f, -side * 0.5f,
+             -side * 0.5f, -kWorldHalfY * 0.5f, -side * 0.5f,
              side, side, side);
 }
 
 // Tall column on the left, 1:4:2 ratio  →  20×80×40 = 64 000 particles at W=6
 void seed_column_left(std::vector<float3>& out, int& idx) {
-    const float u = kWorldHalfExtent / 3.0f;
+    const float u = kWorldHalfX / 3.0f;
     fill_box(out, idx,
-             -kWorldHalfExtent * 0.5f, -kWorldHalfExtent * 0.5f, -u,
+             -kWorldHalfX * 0.5f, -kWorldHalfY * 0.5f, -u,
              u, u * 4.0f, u * 2.0f);
 }
 
 // Wide shallow slab, 8:1:8 ratio  →  80×10×80 = 64 000 particles at W=6
 void seed_wide_block(std::vector<float3>& out, int& idx) {
-    const float half_w = kWorldHalfExtent * 2.0f / 3.0f;
-    const float height  = kWorldHalfExtent / 6.0f;
+    const float half_w = kWorldHalfX * 2.0f / 3.0f;
+    const float height  = kWorldHalfY / 6.0f;
     fill_box(out, idx,
-             -half_w, -kWorldHalfExtent * 0.5f, -half_w,
+             -half_w, -kWorldHalfY * 0.5f, -half_w,
              half_w * 2.0f, height, half_w * 2.0f);
 }
 
 void seed_large_block(std::vector<float3>& out, int& idx) {
-    const float half_w = kWorldHalfExtent * 2.0f / 3.0f;
+    const float half_w = kWorldHalfX * 2.0f / 3.0f;
     fill_box(out, idx,
              -half_w, -half_w, -half_w,
              half_w * 2.0f, half_w * 2, half_w * 2.0f);

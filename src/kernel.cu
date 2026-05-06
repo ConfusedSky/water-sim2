@@ -685,15 +685,14 @@ float estimate_rest_density(float kernel_radius) {
 
 void upload_params() {
   g_params = SimParams{};
-  float W = kWorldHalfExtent;
-  g_params.box_min = make_float3(-W, -W, -W);
-  g_params.box_max = make_float3(W, W, W);
+  g_params.box_min = make_float3(-kWorldHalfX, -kWorldHalfY, -kWorldHalfZ);
+  g_params.box_max = make_float3(kWorldHalfX, kWorldHalfY, kWorldHalfZ);
   g_params.gravity = -7.0f;
   g_params.particle_radius = kParticleRadius;
-  g_params.kernel_radius = 0.20f;
+  g_params.kernel_radius = 0.17f;
   g_params.rest_density = estimate_rest_density(g_params.kernel_radius) * 0.95f;
-  g_params.lambda_epsilon = 300.0f;
-  g_params.tensile_k = 0.000005f;
+  g_params.lambda_epsilon = 10000.0f;
+  g_params.tensile_k = 0.000110f;
   g_params.tensile_n = 4.0f;
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 1.0f;
@@ -702,7 +701,7 @@ void upload_params() {
   g_params.vorticity_eps = 0.0000f;
   g_params.max_position_correction = g_params.particle_radius * 0.75f;
   g_params.max_speed = 100.0f;
-  g_params.solver_iterations = 1;
+  g_params.solver_iterations = 2;
   compute_grid_dims(g_params);
   CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
 }
