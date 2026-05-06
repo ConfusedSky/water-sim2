@@ -456,6 +456,7 @@ int main() {
             ImGui::Text("Avg density: %.2f", stats.avg_density);
             ImGui::Text("Max density: %.2f", stats.max_density);
             ImGui::Text("Avg speed: %.3f",   stats.avg_speed);
+            ImGui::Text("Grid Y: %d / %d cells", stats.grid_h, stats.grid_h_max);
             ImGui::Separator();
             ImGui::Text("Left drag: orbit  |  Scroll: zoom");
             ImGui::Text("Right drag: push fluid");

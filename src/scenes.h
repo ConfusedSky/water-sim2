@@ -10,8 +10,8 @@ enum class SceneId {
 };
 
 constexpr int   kSceneCount        = 3;
-constexpr int   kSceneParticleCount = 16384;
-constexpr float kWorldHalfExtent   = 3.0f;
+constexpr int   kSceneParticleCount = 32768;
+constexpr float kWorldHalfExtent   = 4.0f;
 
 const char* scene_name(SceneId id);
 void        seed_scene(SceneId id, std::vector<float3>& out);
