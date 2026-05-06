@@ -315,7 +315,6 @@ int main() {
                 prop.totalGlobalMem / (1024 * 1024));
     CUDA_CHECK(cudaSetDevice(dev));
     init_simulation();
-    const int particle_count = get_particle_count();
 
     // --- CUDA/GL interop VBO -------------------------------------------------
     GLuint vao = 0, vbo = 0;
@@ -323,7 +322,7 @@ int main() {
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, particle_count * sizeof(float) * 4, nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, kSceneParticleCount * sizeof(float) * 4, nullptr, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
     glBindVertexArray(0);
@@ -432,7 +431,7 @@ int main() {
         glUniform1f(loc_p32,  proj_mat[3][2]);
 
         glBindVertexArray(vao);
-        glDrawArrays(GL_POINTS, 0, particle_count);
+        glDrawArrays(GL_POINTS, 0, get_particle_count());
         glBindVertexArray(0);
 
         glEnable(GL_BLEND);
@@ -447,7 +446,7 @@ int main() {
                 ImGuiWindowFlags_NoNav);
             ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
             ImGui::Text("CUDA: %s", prop.name);
-            ImGui::Text("Particles: %d", particle_count);
+            ImGui::Text("Particles: %d", get_particle_count());
             ImGui::Text("Solver iterations: %d", get_solver_iterations());
             float as = 0, ms = 0, ar = 0, mr = 0;
             frame_window.summarize(as, ms, ar, mr);
@@ -463,7 +462,7 @@ int main() {
             ImGui::SliderFloat("Mouse radius",   &inp.mouse_radius,   0.1f, 2.0f);
             ImGui::SliderFloat("Mouse strength", &inp.mouse_strength, 5.0f, 500.0f);
 
-            const char* scene_names[] = { "cube (full)", "column (left)", "wide block" };
+            const char* scene_names[] = { "cube (full)", "column (left)", "wide block", "large block" };
             int scene_idx = static_cast<int>(active_scene);
             ImGui::PushItemWidth(150.0f);
             if (ImGui::Combo("scene", &scene_idx, scene_names, kSceneCount)) {

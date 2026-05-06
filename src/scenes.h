@@ -7,11 +7,12 @@ enum class SceneId {
     CubeFull  = 0,
     ColumnLeft = 1,
     WideBlock  = 2,
+    LargeBlock  = 3,
 };
 
-constexpr int   kSceneCount        = 3;
-constexpr int   kSceneParticleCount = 2 << 14;
-constexpr float kWorldHalfExtent   = 4.0f;
+constexpr int   kSceneCount        = 4;
+constexpr int   kSceneParticleCount = 2 << 15;
+constexpr float kWorldHalfExtent   = 3.0f;
 constexpr float kParticleRadius    = 0.05f;
 
 const char* scene_name(SceneId id);
