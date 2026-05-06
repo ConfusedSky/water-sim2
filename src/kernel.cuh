@@ -47,6 +47,7 @@ SimulationStats get_simulation_stats();
 TunableParams get_tunable_params();
 void set_tunable_params(const TunableParams& params);
 
+void set_world_bounds(float world_half);
 void step_simulation(float dt, const MouseState& mouse, float4* render_particles);
 
 void set_initial_positions(const std::vector<float2>& positions, float spacing);

@@ -1010,6 +1010,23 @@ void step_simulation(float dt, const MouseState &mouse,
   CUDA_CHECK(cudaGetLastError());
 }
 
+void set_world_bounds(float world_half) {
+  g_params.box_min = make_float2(-world_half, -world_half);
+  g_params.box_max = make_float2( world_half,  world_half);
+  compute_grid_dims(g_params);
+
+  int new_max_cells = g_params.grid_w * g_params.grid_h;
+  if (new_max_cells > g_max_cells) {
+    CUDA_CHECK(cudaFree(g_cell_start));
+    CUDA_CHECK(cudaFree(g_cell_end));
+    CUDA_CHECK(cudaMalloc(&g_cell_start, new_max_cells * sizeof(int)));
+    CUDA_CHECK(cudaMalloc(&g_cell_end,   new_max_cells * sizeof(int)));
+    g_max_cells = new_max_cells;
+  }
+
+  CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
+}
+
 void set_initial_positions(const std::vector<float2> &positions, float spacing) {
   g_particle_count = std::min(static_cast<int>(positions.size()), kMaxParticleCount);
   g_initial_positions.assign(positions.begin(),

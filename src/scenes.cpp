@@ -5,16 +5,15 @@
 
 namespace {
 
-constexpr float kSpacing = 0.019f;
-constexpr float kRowJitter = kSpacing * 0.15f;
+constexpr float kRowJitter = kDefaultSpacing * 0.15f;
 
 void fill_grid(std::vector<float2>& out, int& write_idx, float start_x,
                float start_y, int cols, int rows) {
     for (int y = 0; y < rows; ++y) {
         for (int x = 0; x < cols; ++x) {
             float offset_x = (y & 1) ? kRowJitter : 0.0f;
-            out[write_idx++] = float2{start_x + x * kSpacing + offset_x,
-                                      start_y + y * kSpacing};
+            out[write_idx++] = float2{start_x + x * kDefaultSpacing + offset_x,
+                                      start_y + y * kDefaultSpacing};
         }
     }
 }

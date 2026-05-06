@@ -69,8 +69,9 @@ bool load_scene_json(const std::string& path, SceneDesc& out, std::string& error
     try {
         json j = json::parse(f);
         out = SceneDesc{};
-        out.name    = j.value("name", fs::path(path).stem().string());
-        out.spacing = j.value("spacing", 0.019f);
+        out.name              = j.value("name", fs::path(path).stem().string());
+        out.spacing           = j.value("spacing", kDefaultSpacing);
+        out.world_half_extent = j.value("world_half_extent", kWorldHalfExtent);
         for (const auto& sr : j.value("spawn_rects", json::array())) {
             out.spawn_rects.push_back({sr.value("x", 0.0f), sr.value("y", 0.0f),
                                        sr.value("width", 1.0f), sr.value("height", 1.0f)});

@@ -13,6 +13,7 @@ enum class SceneId {
 constexpr int kSceneCount = 3;
 constexpr int kMaxParticleCount = 65536;
 constexpr float kWorldHalfExtent = 3.0f;
+constexpr float kDefaultSpacing = 0.019f;
 
 const char* scene_name(SceneId id);
 

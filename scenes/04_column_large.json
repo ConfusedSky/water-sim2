@@ -1,0 +1,13 @@
+{
+  "name": "Column (large)",
+  "world_half_extent": 6.0,
+  "spawn_rects": [
+    {
+      "x": -5.70,
+      "y": -5.70,
+      "width": 2.016,
+      "height": 5.864
+    }
+  ],
+  "obstacles": []
+}

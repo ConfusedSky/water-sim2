@@ -695,7 +695,8 @@ static void mouse_button_callback(GLFWwindow* window, int button, int action,
     }
 }
 
-static float2 screen_to_world(double x, double y, int width, int height) {
+static float2 screen_to_world(double x, double y, int width, int height,
+                               float world_half) {
     if (width <= 0 || height <= 0) {
         return make_float2(0.0f, 0.0f);
     }
@@ -703,11 +704,12 @@ static float2 screen_to_world(double x, double y, int width, int height) {
     float ndc_x = static_cast<float>((x / static_cast<double>(width)) * 2.0 - 1.0);
     float ndc_y =
         static_cast<float>(1.0 - (y / static_cast<double>(height)) * 2.0);
-    return make_float2(ndc_x * kWorldHalfExtent, ndc_y * kWorldHalfExtent);
+    return make_float2(ndc_x * world_half, ndc_y * world_half);
 }
 
 static MouseState build_mouse_state(MouseController& mouse, int width, int height,
-                                    float frame_dt, bool capture_mouse) {
+                                    float frame_dt, bool capture_mouse,
+                                    float world_half) {
     MouseState state{};
     state.radius = mouse.radius;
     state.strength = mouse.strength;
@@ -718,7 +720,7 @@ static MouseState build_mouse_state(MouseController& mouse, int width, int heigh
         return state;
     }
 
-    float2 world = screen_to_world(mouse.cursor_x, mouse.cursor_y, width, height);
+    float2 world = screen_to_world(mouse.cursor_x, mouse.cursor_y, width, height, world_half);
     float2 world_vel = make_float2(0.0f, 0.0f);
     if (mouse.has_prev_world && frame_dt > 1.0e-6f) {
         world_vel = make_float2((world.x - mouse.prev_world.x) / frame_dt,
@@ -819,6 +821,7 @@ int main() {
 
     // Scene state — all scenes driven by JSON files
     SceneDesc current_scene{};
+    float current_world_half = kWorldHalfExtent;
     std::vector<std::string> scene_files;
     std::vector<std::string> scene_names;   // display names parallel to scene_files
     int active_scene_idx = 0;
@@ -837,8 +840,10 @@ int main() {
             scene_load_error = err;
             return;
         }
+        set_world_bounds(desc.world_half_extent);
+        current_world_half = desc.world_half_extent;
         std::vector<float> sdf_px;
-        bake_sdf(desc, kWorldHalfExtent, kSdfResolution, sdf_px);
+        bake_sdf(desc, desc.world_half_extent, kSdfResolution, sdf_px);
         if (desc.obstacles.empty())
             clear_sdf();
         else
@@ -892,7 +897,7 @@ int main() {
         glfwGetFramebufferSize(win, &w, &h);
         MouseState sim_mouse =
             build_mouse_state(mouse, w, h, static_cast<float>(frame_dt),
-                              ImGui::GetIO().WantCaptureMouse);
+                              ImGui::GetIO().WantCaptureMouse, current_world_half);
 
         double sim_start = glfwGetTime();
         float4* dptr = nullptr;
@@ -912,7 +917,7 @@ int main() {
         frame_window.push(sim_end, sim_ms, last_render_ms);
 
         double render_start = glfwGetTime();
-        float world_scale_inv = 1.0f / kWorldHalfExtent;
+        float world_scale_inv = 1.0f / current_world_half;
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, w, h);

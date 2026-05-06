@@ -4,6 +4,8 @@
 #include <vector>
 #include <vector_types.h>
 
+#include "scenes.h"
+
 enum class ObstacleType { Circle, Box };
 
 struct ObstacleCircle { float cx, cy, r; };
@@ -21,7 +23,8 @@ struct SpawnRect {
 
 struct SceneDesc {
     std::string            name;
-    float                  spacing = 0.019f;
+    float                  spacing = kDefaultSpacing;
+    float                  world_half_extent = kWorldHalfExtent;
     std::vector<SpawnRect> spawn_rects;
     std::vector<Obstacle>  obstacles;
 };
