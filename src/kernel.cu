@@ -2,7 +2,6 @@
 
 #include <cuda_runtime.h>
 #include <thrust/execution_policy.h>
-#include <thrust/reduce.h>
 #include <thrust/sort.h>
 
 #include <algorithm>
@@ -62,10 +61,6 @@ __device__ inline float3 cross3(float3 a, float3 b) {
   return make_float3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z,
                      a.x * b.y - a.y * b.x);
 }
-struct ExtractY {
-  __host__ __device__ float operator()(const float3 &v) const { return v.y; }
-};
-
 __host__ __device__ inline float3 clamp_length(float3 v, float max_len) {
   float len2 = length2(v);
   if (len2 <= max_len * max_len || len2 <= 1.0e-12f)
@@ -840,11 +835,6 @@ SimulationStats get_simulation_stats() {
   g_last_stats.avg_density = ds.density_sum / g_particle_count;
   g_last_stats.max_density = bits_to_float(ds.density_max_bits);
   g_last_stats.avg_speed = ds.speed_sum / g_particle_count;
-  g_last_stats.grid_h = g_params.grid_h;
-  // Full-domain grid_h — recompute from params without the adaptive shrink
-  g_last_stats.grid_h_max = std::max(
-      1, static_cast<int>(std::ceil((g_params.box_max.y - g_params.box_min.y) /
-                                    g_params.cell_size)));
   return g_last_stats;
 }
 
@@ -891,18 +881,4 @@ void step_simulation(float dt, const MouseState &mouse,
   export_render_particles_kernel<<<blocks, kThreadsPerBlock>>>(
       g_pos, g_density, render_particles, g_particle_count);
   CUDA_CHECK(cudaGetLastError());
-
-  // Adaptive grid: shrink grid_h to the particle extent + headroom
-  float max_y = thrust::transform_reduce(
-      thrust::device, g_pos, g_pos + g_particle_count, ExtractY{},
-      g_params.box_min.y, thrust::maximum<float>());
-  float headroom = 6.0f * g_params.kernel_radius;
-  float new_top = fminf(max_y + headroom, g_params.box_max.y);
-  int new_grid_h =
-      std::max(1, static_cast<int>(std::ceil((new_top - g_params.box_min.y) /
-                                             g_params.cell_size)));
-  if (new_grid_h != g_params.grid_h) {
-    g_params.grid_h = new_grid_h;
-    CUDA_CHECK(cudaMemcpyToSymbol(c_params, &g_params, sizeof(g_params)));
-  }
 }

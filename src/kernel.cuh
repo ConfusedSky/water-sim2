@@ -9,8 +9,6 @@ struct SimulationStats {
     float avg_density;
     float max_density;
     float avg_speed;
-    int   grid_h;        // current adaptive Y cell count
-    int   grid_h_max;    // maximum possible Y cell count (full domain)
 };
 
 struct MouseState {
