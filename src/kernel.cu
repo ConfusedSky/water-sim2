@@ -277,18 +277,12 @@ __global__ void find_neighbors_grid_kernel(const float3 *positions,
   float h2 = c_params.kernel_radius * c_params.kernel_radius;
   int cnt = 0;
 
-  for (int dz = -1; dz <= 1; ++dz) {
-    int nz = c.z + dz;
-    if (nz < 0 || nz >= c_params.grid_d)
-      continue;
-    for (int dy = -1; dy <= 1; ++dy) {
-      int ny = c.y + dy;
-      if (ny < 0 || ny >= c_params.grid_h)
-        continue;
-      for (int dx = -1; dx <= 1; ++dx) {
-        int nx = c.x + dx;
-        if (nx < 0 || nx >= c_params.grid_w)
-          continue;
+  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
+  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
+  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
+  for (int nz = z0; nz <= z1; ++nz) {
+    for (int ny = y0; ny <= y1; ++ny) {
+      for (int nx = x0; nx <= x1; ++nx) {
         int hash =
             nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
         int start = cell_start[hash];
@@ -321,18 +315,12 @@ compute_density_grid_kernel(const float3 *positions, const float3 *pos_sorted,
   float h2 = c_params.kernel_radius * c_params.kernel_radius;
   float rho = poly6_weight(make_float3(0.0f, 0.0f, 0.0f));
 
-  for (int dz = -1; dz <= 1; ++dz) {
-    int nz = c.z + dz;
-    if (nz < 0 || nz >= c_params.grid_d)
-      continue;
-    for (int dy = -1; dy <= 1; ++dy) {
-      int ny = c.y + dy;
-      if (ny < 0 || ny >= c_params.grid_h)
-        continue;
-      for (int dx = -1; dx <= 1; ++dx) {
-        int nx = c.x + dx;
-        if (nx < 0 || nx >= c_params.grid_w)
-          continue;
+  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
+  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
+  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
+  for (int nz = z0; nz <= z1; ++nz) {
+    for (int ny = y0; ny <= y1; ++ny) {
+      for (int nx = x0; nx <= x1; ++nx) {
         int hash =
             nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
         int start = cell_start[hash];
@@ -478,18 +466,12 @@ apply_xsph_viscosity_kernel(const float3 *positions, const float3 *pos_sorted,
   int3 c = cell_coords_for(pi);
   float3 accum = make_float3(0.0f, 0.0f, 0.0f);
 
-  for (int dz = -1; dz <= 1; ++dz) {
-    int nz = c.z + dz;
-    if (nz < 0 || nz >= c_params.grid_d)
-      continue;
-    for (int dy = -1; dy <= 1; ++dy) {
-      int ny = c.y + dy;
-      if (ny < 0 || ny >= c_params.grid_h)
-        continue;
-      for (int dx = -1; dx <= 1; ++dx) {
-        int nx = c.x + dx;
-        if (nx < 0 || nx >= c_params.grid_w)
-          continue;
+  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
+  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
+  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
+  for (int nz = z0; nz <= z1; ++nz) {
+    for (int ny = y0; ny <= y1; ++ny) {
+      for (int nx = x0; nx <= x1; ++nx) {
         int hash =
             nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
         int start = cell_start[hash];
@@ -524,18 +506,12 @@ __global__ void compute_vorticity_kernel(const float3 *positions,
   int3 c = cell_coords_for(pi);
   float3 omega = make_float3(0.0f, 0.0f, 0.0f);
 
-  for (int dz = -1; dz <= 1; ++dz) {
-    int nz = c.z + dz;
-    if (nz < 0 || nz >= c_params.grid_d)
-      continue;
-    for (int dy = -1; dy <= 1; ++dy) {
-      int ny = c.y + dy;
-      if (ny < 0 || ny >= c_params.grid_h)
-        continue;
-      for (int dx = -1; dx <= 1; ++dx) {
-        int nx = c.x + dx;
-        if (nx < 0 || nx >= c_params.grid_w)
-          continue;
+  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
+  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
+  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
+  for (int nz = z0; nz <= z1; ++nz) {
+    for (int ny = y0; ny <= y1; ++ny) {
+      for (int nx = x0; nx <= x1; ++nx) {
         int hash =
             nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
         int start = cell_start[hash];
@@ -568,18 +544,12 @@ apply_vorticity_force_kernel(const float3 *positions, const float3 *pos_sorted,
   int3 c = cell_coords_for(pi);
   float3 eta = make_float3(0.0f, 0.0f, 0.0f);
 
-  for (int dz = -1; dz <= 1; ++dz) {
-    int nz = c.z + dz;
-    if (nz < 0 || nz >= c_params.grid_d)
-      continue;
-    for (int dy = -1; dy <= 1; ++dy) {
-      int ny = c.y + dy;
-      if (ny < 0 || ny >= c_params.grid_h)
-        continue;
-      for (int dx = -1; dx <= 1; ++dx) {
-        int nx = c.x + dx;
-        if (nx < 0 || nx >= c_params.grid_w)
-          continue;
+  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
+  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
+  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
+  for (int nz = z0; nz <= z1; ++nz) {
+    for (int ny = y0; ny <= y1; ++ny) {
+      for (int nx = x0; nx <= x1; ++nx) {
         int hash =
             nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
         int start = cell_start[hash];
