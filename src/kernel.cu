@@ -302,39 +302,22 @@ __global__ void find_neighbors_grid_kernel(const float3 *positions,
   neighbor_counts[i] = cnt;
 }
 
-__global__ void
-compute_density_grid_kernel(const float3 *positions, const float3 *pos_sorted,
-                            const int *particle_index, const int *cell_start,
-                            const int *cell_end, float *density, int n) {
+__global__ void compute_density_kernel(const float3 *positions,
+                                       const float3 *pos_sorted,
+                                       const int *neighbors,
+                                       const int *neighbor_counts,
+                                       float *density, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
 
   float3 pi = positions[i];
-  int3 c = cell_coords_for(pi);
-  float h2 = c_params.kernel_radius * c_params.kernel_radius;
   float rho = poly6_weight(make_float3(0.0f, 0.0f, 0.0f));
+  int cnt = neighbor_counts[i];
 
-  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
-  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
-  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
-  for (int nz = z0; nz <= z1; ++nz) {
-    for (int ny = y0; ny <= y1; ++ny) {
-      for (int nx = x0; nx <= x1; ++nx) {
-        int hash =
-            nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
-        int start = cell_start[hash];
-        int end = cell_end[hash];
-        for (int idx = start; idx < end; ++idx) {
-          float3 d = pi - pos_sorted[idx];
-          if (length2(d) >= h2)
-            continue;
-          if (particle_index[idx] == i)
-            continue;
-          rho += poly6_weight(d);
-        }
-      }
-    }
+  for (int k = 0; k < cnt; ++k) {
+    int idx = neighbors[k * n + i];
+    rho += poly6_weight(pi - pos_sorted[idx]);
   }
   density[i] = rho;
 }
@@ -455,38 +438,24 @@ __global__ void enforce_box_boundary_kernel(float3 *pos, float3 *vel, int n,
 __global__ void
 apply_xsph_viscosity_kernel(const float3 *positions, const float3 *pos_sorted,
                             const float3 *vel_in, float3 *vel_out,
-                            const int *particle_index, const int *cell_start,
-                            const int *cell_end, int n) {
+                            const int *particle_index, const int *neighbors,
+                            const int *neighbor_counts, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
 
   float3 pi = positions[i];
   float3 vi = vel_in[i];
-  int3 c = cell_coords_for(pi);
   float3 accum = make_float3(0.0f, 0.0f, 0.0f);
+  int cnt = neighbor_counts[i];
 
-  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
-  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
-  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
-  for (int nz = z0; nz <= z1; ++nz) {
-    for (int ny = y0; ny <= y1; ++ny) {
-      for (int nx = x0; nx <= x1; ++nx) {
-        int hash =
-            nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
-        int start = cell_start[hash];
-        int end = cell_end[hash];
-        for (int idx = start; idx < end; ++idx) {
-          float w = poly6_weight(pi - pos_sorted[idx]);
-          if (w <= 0.0f)
-            continue;
-          int j = particle_index[idx];
-          if (j == i)
-            continue;
-          accum += (vel_in[j] - vi) * w;
-        }
-      }
-    }
+  for (int k = 0; k < cnt; ++k) {
+    int idx = neighbors[k * n + i];
+    float w = poly6_weight(pi - pos_sorted[idx]);
+    if (w <= 0.0f)
+      continue;
+    int j = particle_index[idx];
+    accum += (vel_in[j] - vi) * w;
   }
   vel_out[i] = vi + accum * c_params.viscosity_c;
 }
@@ -495,38 +464,24 @@ __global__ void compute_vorticity_kernel(const float3 *positions,
                                          const float3 *pos_sorted,
                                          const float3 *vel, float3 *vorticity,
                                          const int *particle_index,
-                                         const int *cell_start,
-                                         const int *cell_end, int n) {
+                                         const int *neighbors,
+                                         const int *neighbor_counts, int n) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
 
   float3 pi = positions[i];
   float3 vi = vel[i];
-  int3 c = cell_coords_for(pi);
   float3 omega = make_float3(0.0f, 0.0f, 0.0f);
+  int cnt = neighbor_counts[i];
 
-  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
-  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
-  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
-  for (int nz = z0; nz <= z1; ++nz) {
-    for (int ny = y0; ny <= y1; ++ny) {
-      for (int nx = x0; nx <= x1; ++nx) {
-        int hash =
-            nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
-        int start = cell_start[hash];
-        int end = cell_end[hash];
-        for (int idx = start; idx < end; ++idx) {
-          float3 grad = spiky_gradient(pi - pos_sorted[idx]);
-          if (length2(grad) < 1.0e-12f)
-            continue;
-          int j = particle_index[idx];
-          if (j == i)
-            continue;
-          omega += cross3(vel[j] - vi, grad);
-        }
-      }
-    }
+  for (int k = 0; k < cnt; ++k) {
+    int idx = neighbors[k * n + i];
+    float3 grad = spiky_gradient(pi - pos_sorted[idx]);
+    if (length2(grad) < 1.0e-12f)
+      continue;
+    int j = particle_index[idx];
+    omega += cross3(vel[j] - vi, grad);
   }
   vorticity[i] = omega;
 }
@@ -534,37 +489,23 @@ __global__ void compute_vorticity_kernel(const float3 *positions,
 __global__ void
 apply_vorticity_force_kernel(const float3 *positions, const float3 *pos_sorted,
                              const float3 *vorticity, float3 *vel,
-                             const int *particle_index, const int *cell_start,
-                             const int *cell_end, int n, float dt) {
+                             const int *particle_index, const int *neighbors,
+                             const int *neighbor_counts, int n, float dt) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= n)
     return;
 
   float3 pi = positions[i];
-  int3 c = cell_coords_for(pi);
   float3 eta = make_float3(0.0f, 0.0f, 0.0f);
+  int cnt = neighbor_counts[i];
 
-  int z0 = max(c.z - 1, 0), z1 = min(c.z + 1, c_params.grid_d - 1);
-  int y0 = max(c.y - 1, 0), y1 = min(c.y + 1, c_params.grid_h - 1);
-  int x0 = max(c.x - 1, 0), x1 = min(c.x + 1, c_params.grid_w - 1);
-  for (int nz = z0; nz <= z1; ++nz) {
-    for (int ny = y0; ny <= y1; ++ny) {
-      for (int nx = x0; nx <= x1; ++nx) {
-        int hash =
-            nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
-        int start = cell_start[hash];
-        int end = cell_end[hash];
-        for (int idx = start; idx < end; ++idx) {
-          float3 grad = spiky_gradient(pi - pos_sorted[idx]);
-          if (length2(grad) < 1.0e-12f)
-            continue;
-          int j = particle_index[idx];
-          if (j == i)
-            continue;
-          eta += grad * length1(vorticity[j]);
-        }
-      }
-    }
+  for (int k = 0; k < cnt; ++k) {
+    int idx = neighbors[k * n + i];
+    float3 grad = spiky_gradient(pi - pos_sorted[idx]);
+    if (length2(grad) < 1.0e-12f)
+      continue;
+    int j = particle_index[idx];
+    eta += grad * length1(vorticity[j]);
   }
 
   float eta_len2 = length2(eta);
@@ -716,14 +657,17 @@ void rebuild_spatial_grid(const float3 *positions, float3 *pos_sorted,
 void run_post_step_passes(int blocks, float dt) {
   int num_cells = g_params.grid_w * g_params.grid_h * g_params.grid_d;
   rebuild_spatial_grid(g_pos, g_pos_sorted, blocks, num_cells);
+  find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
+      g_pos, g_pos_sorted, g_particle_index, g_cell_start, g_cell_end,
+      g_neighbors, g_neighbor_counts, g_particle_count);
 
   if (g_params.vorticity_eps > 0.0f) {
     compute_vorticity_kernel<<<blocks, kThreadsPerBlock>>>(
-        g_pos, g_pos_sorted, g_vel, g_vorticity, g_particle_index, g_cell_start,
-        g_cell_end, g_particle_count);
+        g_pos, g_pos_sorted, g_vel, g_vorticity, g_particle_index, g_neighbors,
+        g_neighbor_counts, g_particle_count);
     apply_vorticity_force_kernel<<<blocks, kThreadsPerBlock>>>(
-        g_pos, g_pos_sorted, g_vorticity, g_vel, g_particle_index, g_cell_start,
-        g_cell_end, g_particle_count, dt);
+        g_pos, g_pos_sorted, g_vorticity, g_vel, g_particle_index, g_neighbors,
+        g_neighbor_counts, g_particle_count, dt);
   }
 
   if (g_params.viscosity_c > 0.0f) {
@@ -732,12 +676,12 @@ void run_post_step_passes(int blocks, float dt) {
                                cudaMemcpyDeviceToDevice));
     apply_xsph_viscosity_kernel<<<blocks, kThreadsPerBlock>>>(
         g_pos, g_pos_sorted, g_vel_scratch, g_vel, g_particle_index,
-        g_cell_start, g_cell_end, g_particle_count);
+        g_neighbors, g_neighbor_counts, g_particle_count);
   }
 
-  compute_density_grid_kernel<<<blocks, kThreadsPerBlock>>>(
-      g_pos, g_pos_sorted, g_particle_index, g_cell_start, g_cell_end,
-      g_density, g_particle_count);
+  compute_density_kernel<<<blocks, kThreadsPerBlock>>>(
+      g_pos, g_pos_sorted, g_neighbors, g_neighbor_counts, g_density,
+      g_particle_count);
   CUDA_CHECK(cudaMemset(g_stats, 0, sizeof(DeviceStats)));
   gather_stats_kernel<<<blocks, kThreadsPerBlock>>>(g_density, g_vel, g_stats,
                                                     g_particle_count);
