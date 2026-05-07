@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
@@ -150,9 +151,23 @@ __device__ inline int3 cell_coords_for(float3 p) {
   return make_int3(cx, cy, cz);
 }
 
-__device__ inline int cell_index_for(int3 c) {
-  return c.z * c_params.grid_w * c_params.grid_h + c.y * c_params.grid_w + c.x;
+// Spread the low 10 bits of x across every third bit (bits 0,3,6,...,27).
+__host__ __device__ inline uint32_t part1by2(uint32_t x) {
+  x &= 0x000003ffu;
+  x = (x | (x << 16)) & 0x030000ffu;
+  x = (x | (x << 8)) & 0x0300f00fu;
+  x = (x | (x << 4)) & 0x030c30c3u;
+  x = (x | (x << 2)) & 0x09249249u;
+  return x;
 }
+
+__host__ __device__ inline int morton3(int x, int y, int z) {
+  return static_cast<int>(part1by2(static_cast<uint32_t>(x)) |
+                          (part1by2(static_cast<uint32_t>(y)) << 1) |
+                          (part1by2(static_cast<uint32_t>(z)) << 2));
+}
+
+__device__ inline int cell_index_for(int3 c) { return morton3(c.x, c.y, c.z); }
 
 // ---------------------------------------------------------------------------
 // SPH kernels (3-D)
@@ -283,8 +298,7 @@ __global__ void find_neighbors_grid_kernel(const float3 *positions,
   for (int nz = z0; nz <= z1; ++nz) {
     for (int ny = y0; ny <= y1; ++ny) {
       for (int nx = x0; nx <= x1; ++nx) {
-        int hash =
-            nz * c_params.grid_w * c_params.grid_h + ny * c_params.grid_w + nx;
+        int hash = morton3(nx, ny, nz);
         int start = cell_start[hash];
         int end = cell_end[hash];
         for (int idx = start; idx < end; ++idx) {
@@ -573,7 +587,11 @@ void allocate_simulation_buffers() {
   int mg = std::max(
       1, static_cast<int>(std::ceil((g_params.box_max.x - g_params.box_min.x) /
                                     kMinCellSize)));
-  g_max_cells = mg * mg * mg;
+  // Morton codes spread cells across 2^(3B) where B is the bits per axis.
+  int bits = 0;
+  while ((1 << bits) < mg)
+    ++bits;
+  g_max_cells = 1 << (3 * bits);
   CUDA_CHECK(cudaMalloc(&g_cell_start, g_max_cells * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&g_cell_end, g_max_cells * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&g_stats, sizeof(DeviceStats)));
@@ -655,7 +673,9 @@ void rebuild_spatial_grid(const float3 *positions, float3 *pos_sorted,
 }
 
 void run_post_step_passes(int blocks, float dt) {
-  int num_cells = g_params.grid_w * g_params.grid_h * g_params.grid_d;
+  int num_cells = morton3(g_params.grid_w - 1, g_params.grid_h - 1,
+                          g_params.grid_d - 1) +
+                  1;
   rebuild_spatial_grid(g_pos, g_pos_sorted, blocks, num_cells);
   find_neighbors_grid_kernel<<<blocks, kThreadsPerBlock>>>(
       g_pos, g_pos_sorted, g_particle_index, g_cell_start, g_cell_end,
@@ -854,7 +874,9 @@ void step_simulation(float dt, const MouseState &mouse,
     init_simulation();
 
   int blocks = (g_particle_count + kThreadsPerBlock - 1) / kThreadsPerBlock;
-  int num_cells = g_params.grid_w * g_params.grid_h * g_params.grid_d;
+  int num_cells = morton3(g_params.grid_w - 1, g_params.grid_h - 1,
+                          g_params.grid_d - 1) +
+                  1;
 
   apply_external_forces_kernel<<<blocks, kThreadsPerBlock>>>(
       g_vel, g_particle_count, dt);
