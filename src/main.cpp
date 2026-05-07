@@ -51,8 +51,8 @@ struct FrameTimingWindow {
     }
 };
 
-constexpr float kFixedDt     = 1.0f / 240.0f;
-constexpr int   kMaxSubsteps = 1;
+constexpr float kFixedDt     = 1.0f / 120.0f;
+constexpr int   kMaxSubsteps = 4;
 constexpr int   kMouseButtonNone = 0;
 constexpr int   kMouseButtonPush = 2;
 
