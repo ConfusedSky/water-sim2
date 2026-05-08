@@ -8,9 +8,10 @@ enum class SceneId {
     ColumnLeft = 1,
     WideBlock  = 2,
     LargeBlock  = 3,
+    CubeFullOffside  = 4,
 };
 
-constexpr int   kSceneCount        = 4;
+constexpr int   kSceneCount        = 5;
 constexpr int   kSceneParticleCount = 2 << 17;
 constexpr float kWorldHalfX        = 6.0f;
 constexpr float kWorldHalfY        = 6.0f;

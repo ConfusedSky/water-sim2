@@ -616,12 +616,12 @@ void upload_params() {
   g_params = SimParams{};
   g_params.box_min = make_float3(-kWorldHalfX, -kWorldHalfY, -kWorldHalfZ);
   g_params.box_max = make_float3(kWorldHalfX, kWorldHalfY, kWorldHalfZ);
-  g_params.gravity = -10.0f;
+  g_params.gravity = -08.0f;
   g_params.particle_radius = kParticleRadius;
   g_params.kernel_radius = 0.17f;
   g_params.rest_density = estimate_rest_density(g_params.kernel_radius) * 0.95f;
   g_params.lambda_epsilon = 100.0f;
-  g_params.tensile_k = 0.000050f;
+  g_params.tensile_k = 0.000025f;
   g_params.tensile_n = 4.0f;
   g_params.tensile_q = 0.2f;
   g_params.velocity_damping = 1.0f;

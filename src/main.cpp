@@ -461,7 +461,7 @@ int main() {
             ImGui::SliderFloat("Mouse radius",   &inp.mouse_radius,   0.1f, 2.0f);
             ImGui::SliderFloat("Mouse strength", &inp.mouse_strength, 5.0f, 500.0f);
 
-            const char* scene_names[] = { "cube (full)", "column (left)", "wide block", "large block" };
+            const char* scene_names[] = { "cube (full)", "column (left)", "wide block", "large block", "cube (full, offside)" };
             int scene_idx = static_cast<int>(active_scene);
             ImGui::PushItemWidth(150.0f);
             if (ImGui::Combo("scene", &scene_idx, scene_names, kSceneCount)) {
