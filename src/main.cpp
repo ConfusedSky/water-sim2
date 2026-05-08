@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "kernel.cuh"
+#include "renderer.h"
 
 // ---------------------------------------------------------------------------
 // Timing
@@ -65,71 +66,6 @@ constexpr int   kMouseButtonPush = 2;
             std::exit(1);                                                      \
         }                                                                      \
     } while (0)
-
-// ---------------------------------------------------------------------------
-// Shaders — 3-D impostor sphere particles
-// ---------------------------------------------------------------------------
-
-static const char* PARTICLE_VS = R"(#version 450 core
-layout(location = 0) in vec4 in_particle; // xyz=pos, w=density01
-
-uniform mat4  u_mv;
-uniform mat4  u_mvp;
-uniform float u_radius_world;
-uniform float u_proj11;       // projection[1][1] = cot(fovy/2)
-uniform float u_viewport_h;
-
-out float v_density;
-out float v_eye_z;
-
-void main() {
-    vec4 pos_eye   = u_mv * vec4(in_particle.xyz, 1.0);
-    v_eye_z        = pos_eye.z;
-    v_density      = in_particle.w;
-    float eye_neg  = -pos_eye.z;
-    gl_PointSize   = max(1.0, u_radius_world * u_proj11 * u_viewport_h / eye_neg);
-    gl_Position    = u_mvp * vec4(in_particle.xyz, 1.0);
-}
-)";
-
-static const char* PARTICLE_FS = R"(#version 450 core
-in float v_density;
-in float v_eye_z;
-
-uniform float u_sphere_radius;
-uniform float u_proj22;   // proj[2][2]
-uniform float u_proj32;   // proj[3][2]
-
-out vec4 frag;
-
-void main() {
-    vec2  uv = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(uv, uv);
-    if (r2 > 1.0) discard;
-
-    float sphere_z = sqrt(1.0 - r2);
-    vec3  n        = vec3(uv.x, -uv.y, sphere_z);   // view-space sphere normal
-
-    // Correct fragment depth to sphere surface
-    float eye_z  = v_eye_z + u_sphere_radius * sphere_z;
-    float ndc_z  = (u_proj22 * eye_z + u_proj32) / (-eye_z);
-    gl_FragDepth = ndc_z * 0.5 + 0.5;
-
-    // Phong
-    vec3  light = normalize(vec3(0.45, 0.75, 0.55));
-    float diff  = max(dot(n, light), 0.0);
-    vec3  H     = normalize(light + vec3(0.0, 0.0, 1.0));
-    float spec  = pow(max(dot(n, H), 0.0), 64.0);
-    float fres  = pow(1.0 - sphere_z, 3.0);
-
-    float d    = clamp((v_density - 0.8) / 0.4, 0.0, 1.0);
-    vec3  base = mix(vec3(0.06, 0.28, 0.65), vec3(0.50, 0.82, 1.00), d);
-    vec3  col  = base * (0.15 + 0.85 * diff);
-    col = mix(col, vec3(0.85, 0.95, 1.00), fres * 0.4);
-    col += vec3(spec * 0.55);
-    frag = vec4(col, 1.0);
-}
-)";
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -246,40 +182,6 @@ static MouseState build_mouse_state(const InputState& inp, const Camera& cam,
 }
 
 // ---------------------------------------------------------------------------
-// GL helpers
-// ---------------------------------------------------------------------------
-
-static GLuint compile_shader(GLenum type, const char* src) {
-    GLuint s = glCreateShader(type);
-    glShaderSource(s, 1, &src, nullptr);
-    glCompileShader(s);
-    GLint ok = 0;
-    glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char log[2048];
-        glGetShaderInfoLog(s, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "shader compile error: %s\n", log);
-        std::exit(1);
-    }
-    return s;
-}
-
-static GLuint link_program(GLuint vs, GLuint fs) {
-    GLuint p = glCreateProgram();
-    glAttachShader(p, vs); glAttachShader(p, fs);
-    glLinkProgram(p);
-    GLint ok = 0;
-    glGetProgramiv(p, GL_LINK_STATUS, &ok);
-    if (!ok) {
-        char log[2048];
-        glGetProgramInfoLog(p, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "program link error: %s\n", log);
-        std::exit(1);
-    }
-    return p;
-}
-
-// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -292,7 +194,7 @@ int main() {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
-    GLFWwindow* win = glfwCreateWindow(1280, 800, "water-sim2 — Phase 6", nullptr, nullptr);
+    GLFWwindow* win = glfwCreateWindow(1280, 800, "water-sim2 — Phase 7", nullptr, nullptr);
     if (!win) { std::fprintf(stderr, "glfwCreateWindow failed\n"); glfwTerminate(); return 1; }
     glfwMakeContextCurrent(win);
     glfwSwapInterval(1);
@@ -330,22 +232,21 @@ int main() {
     cudaGraphicsResource* cuda_vbo = nullptr;
     CUDA_CHECK(cudaGraphicsGLRegisterBuffer(&cuda_vbo, vbo, cudaGraphicsRegisterFlagsNone));
 
-    // --- Particle shader -----------------------------------------------------
-    GLuint vs   = compile_shader(GL_VERTEX_SHADER,   PARTICLE_VS);
-    GLuint fs   = compile_shader(GL_FRAGMENT_SHADER, PARTICLE_FS);
-    GLuint prog = link_program(vs, fs);
-    glDeleteShader(vs); glDeleteShader(fs);
-
-    GLint loc_mv     = glGetUniformLocation(prog, "u_mv");
-    GLint loc_mvp    = glGetUniformLocation(prog, "u_mvp");
-    GLint loc_rad    = glGetUniformLocation(prog, "u_radius_world");
-    GLint loc_p11    = glGetUniformLocation(prog, "u_proj11");
-    GLint loc_vph    = glGetUniformLocation(prog, "u_viewport_h");
-    GLint loc_srad   = glGetUniformLocation(prog, "u_sphere_radius");
-    GLint loc_p22    = glGetUniformLocation(prog, "u_proj22");
-    GLint loc_p32    = glGetUniformLocation(prog, "u_proj32");
-
     constexpr float kParticleRadius = 0.05f;
+
+    // --- Renderer ------------------------------------------------------------
+    int win_w = 0, win_h = 0;
+    glfwGetFramebufferSize(win, &win_w, &win_h);
+
+    Renderer renderer;
+    RendererInit rinfo{};
+    rinfo.width           = win_w;
+    rinfo.height          = win_h;
+    rinfo.particle_radius = kParticleRadius;
+    renderer.init(rinfo);
+
+    RenderSettings render_settings{};
+    render_settings.floor_y = -kWorldHalfY;
 
     // --- State ---------------------------------------------------------------
     Camera cam{};
@@ -409,30 +310,13 @@ int main() {
         // --- Render ----------------------------------------------------------
         double render_start = glfwGetTime();
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, w, h);
-        glClearColor(bg_color[0], bg_color[1], bg_color[2], 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
         float aspect = (h > 0) ? static_cast<float>(w) / h : 1.0f;
         glm::mat4 proj_mat = cam.proj(aspect);
         glm::mat4 view_mat = cam.view();
-        glm::mat4 mvp      = proj_mat * view_mat;
+        glm::vec3 cam_pos  = cam.position();
 
-        glDisable(GL_BLEND);
-        glUseProgram(prog);
-        glUniformMatrix4fv(loc_mv,  1, GL_FALSE, glm::value_ptr(view_mat));
-        glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
-        glUniform1f(loc_rad,  kParticleRadius);
-        glUniform1f(loc_p11,  proj_mat[1][1]);
-        glUniform1f(loc_vph,  static_cast<float>(h));
-        glUniform1f(loc_srad, kParticleRadius);
-        glUniform1f(loc_p22,  proj_mat[2][2]);
-        glUniform1f(loc_p32,  proj_mat[3][2]);
-
-        glBindVertexArray(vao);
-        glDrawArrays(GL_POINTS, 0, get_particle_count());
-        glBindVertexArray(0);
+        renderer.render(vao, get_particle_count(), view_mat, proj_mat, cam_pos,
+                         render_settings, bg_color);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -516,6 +400,56 @@ int main() {
             ImGui::End();
         }
 
+        {
+            ImGui::SetNextWindowPos(ImVec2(10.0f, static_cast<float>(h) - 10.0f),
+                                    ImGuiCond_FirstUseEver, ImVec2(0.0f, 1.0f));
+            ImGui::SetNextWindowSize(ImVec2(300.0f, 0.0f), ImGuiCond_FirstUseEver);
+            ImGui::Begin("rendering");
+
+            const char* mode_names[] = { "spheres (debug)", "screen-space" };
+            ImGui::PushItemWidth(160.0f);
+            ImGui::Combo("mode", &render_settings.mode, mode_names, 2);
+            const char* dbg_names[] = { "final", "depth", "thickness", "normals" };
+            ImGui::Combo("debug view", &render_settings.debug_view, dbg_names, 4);
+            ImGui::PopItemWidth();
+
+            ImGui::Checkbox("skybox", &render_settings.show_skybox); ImGui::SameLine();
+            ImGui::Checkbox("floor",  &render_settings.show_floor);
+
+            if (ImGui::CollapsingHeader("ssf smoothing", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::PushItemWidth(120.0f);
+                ImGui::SliderInt  ("smooth iters",  &render_settings.smooth_iters, 0, 80);
+                ImGui::SliderInt  ("smooth radius", &render_settings.smooth_radius, 1, 6);
+                ImGui::InputFloat ("sigma_spatial", &render_settings.sigma_spatial, 0, 0, "%.3f");
+                ImGui::InputFloat ("sigma_depth",   &render_settings.sigma_depth,   0, 0, "%.3f");
+                ImGui::PopItemWidth();
+            }
+            if (ImGui::CollapsingHeader("ssf shading")) {
+                ImGui::PushItemWidth(120.0f);
+                ImGui::InputFloat ("thickness scale", &render_settings.thickness_scale,      0, 0, "%.4f");
+                ImGui::InputFloat ("thickness rmul",  &render_settings.thickness_radius_mul, 0, 0, "%.3f");
+                ImGui::InputFloat ("refraction",      &render_settings.refraction_strength,  0, 0, "%.4f");
+                ImGui::InputFloat ("fresnel f0",      &render_settings.fresnel_f0,           0, 0, "%.4f");
+                ImGui::InputFloat ("specular pow",    &render_settings.specular_power,       0, 0, "%.1f");
+                ImGui::InputFloat ("specular int",    &render_settings.specular_intensity,   0, 0, "%.3f");
+                ImGui::PopItemWidth();
+                ImGui::ColorEdit3("water color", render_settings.water_color);
+                ImGui::ColorEdit3("absorption",  render_settings.absorption);
+                ImGui::SliderFloat3("sun dir", render_settings.sun_dir, -1.0f, 1.0f);
+            }
+            if (ImGui::CollapsingHeader("floor", ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::PushItemWidth(120.0f);
+                ImGui::InputFloat("floor y",       &render_settings.floor_y,      0, 0, "%.2f");
+                ImGui::InputFloat("cell size",     &render_settings.floor_cell,   0, 0, "%.3f");
+                ImGui::SliderFloat("color jitter", &render_settings.floor_jitter, 0.0f, 1.0f, "%.3f");
+                ImGui::PopItemWidth();
+                ImGui::ColorEdit3("color a", render_settings.floor_color_a);
+                ImGui::ColorEdit3("color b", render_settings.floor_color_b);
+            }
+
+            ImGui::End();
+        }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         double render_end = glfwGetTime();
@@ -528,7 +462,7 @@ int main() {
     CUDA_CHECK(cudaGraphicsUnregisterResource(cuda_vbo));
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
-    glDeleteProgram(prog);
+    renderer.shutdown();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

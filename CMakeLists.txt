@@ -72,6 +72,7 @@ add_executable(water_sim2
     src/kernel.cu
     src/scenes.cpp
     src/scene_desc.cpp
+    src/renderer.cpp
 )
 target_link_libraries(water_sim2 PRIVATE
     CUDA::cudart
