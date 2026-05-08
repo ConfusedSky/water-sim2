@@ -349,7 +349,7 @@ int main() {
 
     // --- State ---------------------------------------------------------------
     Camera cam{};
-    SceneId active_scene = SceneId::CubeFull;
+    SceneId active_scene = SceneId::CubeFullOffside;
     float bg_color[3]    = {0.04f, 0.05f, 0.08f};
 
     IMGUI_CHECKVERSION();
