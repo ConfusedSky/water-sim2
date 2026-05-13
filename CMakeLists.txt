@@ -78,6 +78,8 @@ add_executable(water_sim2
     src/kernel.cu
     src/scenes.cpp
     src/scene_desc.cpp
+    src/renderer.cpp
+    src/shader_program.cpp
 )
 target_link_libraries(water_sim2 PRIVATE
     CUDA::cudart
@@ -95,4 +97,13 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/scenes)
 file(GLOB _scene_jsons CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/scenes/*.json)
 foreach(_f ${_scene_jsons})
     configure_file(${_f} ${CMAKE_BINARY_DIR}/scenes/ COPYONLY)
+endforeach()
+
+# Copy shaders to build directory as a fallback when SHADERS_DIR is not set
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shaders)
+file(GLOB _shader_files CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/shaders/*.vert
+    ${CMAKE_SOURCE_DIR}/shaders/*.frag)
+foreach(_f ${_shader_files})
+    configure_file(${_f} ${CMAKE_BINARY_DIR}/shaders/ COPYONLY)
 endforeach()

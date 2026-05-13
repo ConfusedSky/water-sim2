@@ -2,23 +2,20 @@
 #include <GLFW/glfw3.h>
 
 #include <cuda_runtime.h>
-#include <cuda_gl_interop.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
-#include <unistd.h>
 
 #include "kernel.cuh"
+#include "renderer.h"
 
 // ---------------------------------------------------------------------------
 // Timing
@@ -67,100 +64,6 @@ constexpr int   kMouseButtonPush = 2;
     } while (0)
 
 // ---------------------------------------------------------------------------
-// Shaders — 3-D impostor sphere particles
-// ---------------------------------------------------------------------------
-
-static const char* PARTICLE_VS = R"(#version 450 core
-layout(location = 0) in vec4 in_particle; // xyz=pos, w=density01
-
-uniform mat4  u_mv;
-uniform mat4  u_mvp;
-uniform float u_radius_world;
-uniform float u_proj11;       // projection[1][1] = cot(fovy/2)
-uniform float u_viewport_h;
-
-out float v_density;
-out float v_eye_z;
-
-void main() {
-    vec4 pos_eye   = u_mv * vec4(in_particle.xyz, 1.0);
-    v_eye_z        = pos_eye.z;
-    v_density      = in_particle.w;
-    float eye_neg  = -pos_eye.z;
-    gl_PointSize   = max(1.0, u_radius_world * u_proj11 * u_viewport_h / eye_neg);
-    gl_Position    = u_mvp * vec4(in_particle.xyz, 1.0);
-}
-)";
-
-static const char* PARTICLE_FS = R"(#version 450 core
-in float v_density;
-in float v_eye_z;
-
-uniform float u_sphere_radius;
-uniform float u_proj22;   // proj[2][2]
-uniform float u_proj32;   // proj[3][2]
-
-out vec4 frag;
-
-void main() {
-    vec2  uv = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(uv, uv);
-    if (r2 > 1.0) discard;
-
-    float sphere_z = sqrt(1.0 - r2);
-    vec3  n        = vec3(uv.x, -uv.y, sphere_z);   // view-space sphere normal
-
-    // Correct fragment depth to sphere surface
-    float eye_z  = v_eye_z + u_sphere_radius * sphere_z;
-    float ndc_z  = (u_proj22 * eye_z + u_proj32) / (-eye_z);
-    gl_FragDepth = ndc_z * 0.5 + 0.5;
-
-    // Phong
-    vec3  light = normalize(vec3(0.45, 0.75, 0.55));
-    float diff  = max(dot(n, light), 0.0);
-    vec3  H     = normalize(light + vec3(0.0, 0.0, 1.0));
-    float spec  = pow(max(dot(n, H), 0.0), 64.0);
-    float fres  = pow(1.0 - sphere_z, 3.0);
-
-    float d    = clamp((v_density - 0.8) / 0.4, 0.0, 1.0);
-    vec3  base = mix(vec3(0.06, 0.28, 0.65), vec3(0.50, 0.82, 1.00), d);
-    vec3  col  = base * (0.15 + 0.85 * diff);
-    col = mix(col, vec3(0.85, 0.95, 1.00), fres * 0.4);
-    col += vec3(spec * 0.55);
-    frag = vec4(col, 1.0);
-}
-)";
-
-// ---------------------------------------------------------------------------
-// Camera
-// ---------------------------------------------------------------------------
-
-struct Camera {
-    float     yaw      = 0.5f;
-    float     pitch    = 0.3f;
-    float     dist     = 10.0f;
-    glm::vec3 target   = {0.0f, -5.0f, 0.0f};
-    float     fovy_deg = 45.0f;
-    float     near_z   = 0.1f;
-    float     far_z    = 200.0f;
-
-    glm::vec3 position() const {
-        return target + glm::vec3(
-            cosf(pitch) * sinf(yaw),
-            sinf(pitch),
-            cosf(pitch) * cosf(yaw)) * dist;
-    }
-
-    glm::mat4 view() const {
-        return glm::lookAt(position(), target, glm::vec3(0, 1, 0));
-    }
-
-    glm::mat4 proj(float aspect) const {
-        return glm::perspective(glm::radians(fovy_deg), aspect, near_z, far_z);
-    }
-};
-
-// ---------------------------------------------------------------------------
 // Input state
 // ---------------------------------------------------------------------------
 
@@ -177,25 +80,38 @@ struct InputState {
     float  mouse_strength = 50.0f;
 };
 
+struct AppContext {
+    InputState* input    = nullptr;
+    Renderer*   renderer = nullptr;
+};
+
 static void cursor_position_callback(GLFWwindow* win, double x, double y) {
-    auto* s = static_cast<InputState*>(glfwGetWindowUserPointer(win));
-    if (!s) return;
-    s->cursor_x   = x;
-    s->cursor_y   = y;
-    s->has_cursor = true;
+    auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(win));
+    if (!ctx || !ctx->input) return;
+    ctx->input->cursor_x   = x;
+    ctx->input->cursor_y   = y;
+    ctx->input->has_cursor = true;
 }
 
 static void mouse_button_callback(GLFWwindow* win, int button, int action, int) {
-    auto* s = static_cast<InputState*>(glfwGetWindowUserPointer(win));
-    if (!s) return;
+    auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(win));
+    if (!ctx || !ctx->input) return;
     bool down = (action != GLFW_RELEASE);
-    if (button == GLFW_MOUSE_BUTTON_LEFT)  s->left_down  = down;
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) s->right_down = down;
+    if (button == GLFW_MOUSE_BUTTON_LEFT)  ctx->input->left_down  = down;
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) ctx->input->right_down = down;
 }
 
 static void scroll_callback(GLFWwindow* win, double, double yoff) {
-    auto* s = static_cast<InputState*>(glfwGetWindowUserPointer(win));
-    if (s) s->scroll_dy += static_cast<float>(yoff);
+    auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(win));
+    if (ctx && ctx->input) ctx->input->scroll_dy += static_cast<float>(yoff);
+}
+
+static void key_callback(GLFWwindow* win, int key, int, int action, int) {
+    auto* ctx = static_cast<AppContext*>(glfwGetWindowUserPointer(win));
+    if (!ctx) return;
+    if (key == GLFW_KEY_F5 && action == GLFW_PRESS && ctx->renderer) {
+        ctx->renderer->request_reload();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -246,40 +162,6 @@ static MouseState build_mouse_state(const InputState& inp, const Camera& cam,
 }
 
 // ---------------------------------------------------------------------------
-// GL helpers
-// ---------------------------------------------------------------------------
-
-static GLuint compile_shader(GLenum type, const char* src) {
-    GLuint s = glCreateShader(type);
-    glShaderSource(s, 1, &src, nullptr);
-    glCompileShader(s);
-    GLint ok = 0;
-    glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-    if (!ok) {
-        char log[2048];
-        glGetShaderInfoLog(s, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "shader compile error: %s\n", log);
-        std::exit(1);
-    }
-    return s;
-}
-
-static GLuint link_program(GLuint vs, GLuint fs) {
-    GLuint p = glCreateProgram();
-    glAttachShader(p, vs); glAttachShader(p, fs);
-    glLinkProgram(p);
-    GLint ok = 0;
-    glGetProgramiv(p, GL_LINK_STATUS, &ok);
-    if (!ok) {
-        char log[2048];
-        glGetProgramInfoLog(p, sizeof(log), nullptr, log);
-        std::fprintf(stderr, "program link error: %s\n", log);
-        std::exit(1);
-    }
-    return p;
-}
-
-// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
@@ -298,10 +180,13 @@ int main() {
     glfwSwapInterval(1);
 
     InputState inp{};
-    glfwSetWindowUserPointer(win, &inp);
+    Renderer   renderer{};
+    AppContext ctx{&inp, &renderer};
+    glfwSetWindowUserPointer(win, &ctx);
     glfwSetCursorPosCallback(win,  cursor_position_callback);
     glfwSetMouseButtonCallback(win, mouse_button_callback);
     glfwSetScrollCallback(win,      scroll_callback);
+    glfwSetKeyCallback(win,         key_callback);
 
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) { std::fprintf(stderr, "glewInit failed\n"); return 1; }
@@ -316,36 +201,10 @@ int main() {
     CUDA_CHECK(cudaSetDevice(dev));
     init_simulation();
 
-    // --- CUDA/GL interop VBO -------------------------------------------------
-    GLuint vao = 0, vbo = 0;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, kSceneParticleCount * sizeof(float) * 4, nullptr, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
-    glBindVertexArray(0);
-
-    cudaGraphicsResource* cuda_vbo = nullptr;
-    CUDA_CHECK(cudaGraphicsGLRegisterBuffer(&cuda_vbo, vbo, cudaGraphicsRegisterFlagsNone));
-
-    // --- Particle shader -----------------------------------------------------
-    GLuint vs   = compile_shader(GL_VERTEX_SHADER,   PARTICLE_VS);
-    GLuint fs   = compile_shader(GL_FRAGMENT_SHADER, PARTICLE_FS);
-    GLuint prog = link_program(vs, fs);
-    glDeleteShader(vs); glDeleteShader(fs);
-
-    GLint loc_mv     = glGetUniformLocation(prog, "u_mv");
-    GLint loc_mvp    = glGetUniformLocation(prog, "u_mvp");
-    GLint loc_rad    = glGetUniformLocation(prog, "u_radius_world");
-    GLint loc_p11    = glGetUniformLocation(prog, "u_proj11");
-    GLint loc_vph    = glGetUniformLocation(prog, "u_viewport_h");
-    GLint loc_srad   = glGetUniformLocation(prog, "u_sphere_radius");
-    GLint loc_p22    = glGetUniformLocation(prog, "u_proj22");
-    GLint loc_p32    = glGetUniformLocation(prog, "u_proj32");
-
-    constexpr float kParticleRadius = 0.05f;
+    if (!renderer.init(kSceneParticleCount)) {
+        std::fprintf(stderr, "renderer.init failed\n");
+        return 1;
+    }
 
     // --- State ---------------------------------------------------------------
     Camera cam{};
@@ -390,17 +249,14 @@ int main() {
 
         // --- Simulate --------------------------------------------------------
         double sim_start = glfwGetTime();
-        float4* dptr = nullptr; size_t bytes = 0;
-        CUDA_CHECK(cudaGraphicsMapResources(1, &cuda_vbo, 0));
-        CUDA_CHECK(cudaGraphicsResourceGetMappedPointer(
-            reinterpret_cast<void**>(&dptr), &bytes, cuda_vbo));
+        float4* dptr = renderer.map_vbo();
         int substeps = 0;
         while (accumulator >= kFixedDt && substeps < kMaxSubsteps) {
             step_simulation(kFixedDt, sim_mouse, dptr);
             accumulator -= kFixedDt;
             ++substeps;
         }
-        CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuda_vbo, 0));
+        renderer.unmap_vbo();
         stats = get_simulation_stats();
         double sim_end = glfwGetTime();
         float sim_ms = static_cast<float>((sim_end - sim_start) * 1000.0);
@@ -408,34 +264,7 @@ int main() {
 
         // --- Render ----------------------------------------------------------
         double render_start = glfwGetTime();
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, w, h);
-        glClearColor(bg_color[0], bg_color[1], bg_color[2], 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        float aspect = (h > 0) ? static_cast<float>(w) / h : 1.0f;
-        glm::mat4 proj_mat = cam.proj(aspect);
-        glm::mat4 view_mat = cam.view();
-        glm::mat4 mvp      = proj_mat * view_mat;
-
-        glDisable(GL_BLEND);
-        glUseProgram(prog);
-        glUniformMatrix4fv(loc_mv,  1, GL_FALSE, glm::value_ptr(view_mat));
-        glUniformMatrix4fv(loc_mvp, 1, GL_FALSE, glm::value_ptr(mvp));
-        glUniform1f(loc_rad,  kParticleRadius);
-        glUniform1f(loc_p11,  proj_mat[1][1]);
-        glUniform1f(loc_vph,  static_cast<float>(h));
-        glUniform1f(loc_srad, kParticleRadius);
-        glUniform1f(loc_p22,  proj_mat[2][2]);
-        glUniform1f(loc_p32,  proj_mat[3][2]);
-
-        glBindVertexArray(vao);
-        glDrawArrays(GL_POINTS, 0, get_particle_count());
-        glBindVertexArray(0);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        renderer.draw(cam, get_particle_count(), w, h, bg_color);
 
         // --- ImGui -----------------------------------------------------------
         {
@@ -458,6 +287,7 @@ int main() {
             ImGui::Separator();
             ImGui::Text("Left drag: orbit  |  Scroll: zoom");
             ImGui::Text("Right drag: push fluid");
+            ImGui::Text("F5: reload shaders");
             ImGui::SliderFloat("Mouse radius",   &inp.mouse_radius,   0.1f, 2.0f);
             ImGui::SliderFloat("Mouse strength", &inp.mouse_strength, 5.0f, 500.0f);
 
@@ -525,10 +355,7 @@ int main() {
     }
 
     shutdown_simulation();
-    CUDA_CHECK(cudaGraphicsUnregisterResource(cuda_vbo));
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteProgram(prog);
+    renderer.shutdown();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
