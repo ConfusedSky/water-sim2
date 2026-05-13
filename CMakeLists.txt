@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
+
+# NVCC 13.2 does not support GCC 16's libstdc++ headers — pin host compiler to gcc-15.
+if(NOT DEFINED CMAKE_CUDA_HOST_COMPILER AND EXISTS /usr/bin/g++-15)
+    set(CMAKE_CUDA_HOST_COMPILER /usr/bin/g++-15)
+endif()
+
 project(water_sim2 LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
