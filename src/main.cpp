@@ -15,7 +15,11 @@
 #include <deque>
 
 #include "kernel.cuh"
+#include "particle_pipeline.h"
+#include "pipeline.h"
 #include "renderer.h"
+
+#include <memory>
 
 // ---------------------------------------------------------------------------
 // Timing
@@ -205,6 +209,11 @@ int main() {
         std::fprintf(stderr, "renderer.init failed\n");
         return 1;
     }
+    if (!renderer.add_pipeline(std::make_unique<ParticlePipeline>("particle 1")) ||
+        !renderer.add_pipeline(std::make_unique<ParticlePipeline>("particle 2"))) {
+        std::fprintf(stderr, "renderer: pipeline registration failed\n");
+        return 1;
+    }
 
     // --- State ---------------------------------------------------------------
     Camera cam{};
@@ -342,6 +351,36 @@ int main() {
             ImGui::SliderFloat("distance", &cam.dist,      1.0f,  80.0f, "%.1f");
             ImGui::SliderFloat("fov",      &cam.fovy_deg, 20.0f, 120.0f, "%.0f°");
             if (ImGui::Button("Reset camera")) { cam = Camera{}; }
+
+            ImGui::End();
+        }
+
+        {
+            ImGui::SetNextWindowPos(ImVec2(static_cast<float>(w) - 10.0f, 360.0f),
+                                    ImGuiCond_FirstUseEver, ImVec2(1.0f, 0.0f));
+            ImGui::SetNextWindowSize(ImVec2(280.0f, 0.0f), ImGuiCond_FirstUseEver);
+            ImGui::Begin("renderer");
+
+            int n = renderer.pipeline_count();
+            if (n > 0) {
+                int active = renderer.active_pipeline_index();
+                if (ImGui::BeginCombo("pipeline", renderer.pipeline_name(active))) {
+                    for (int i = 0; i < n; ++i) {
+                        bool selected = (i == active);
+                        if (ImGui::Selectable(renderer.pipeline_name(i), selected)) {
+                            renderer.set_active_pipeline(i);
+                        }
+                        if (selected) ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::EndCombo();
+                }
+                ImGui::Separator();
+                if (auto* p = renderer.active_pipeline()) {
+                    p->draw_imgui_options();
+                }
+            } else {
+                ImGui::TextUnformatted("no pipelines registered");
+            }
 
             ImGui::End();
         }

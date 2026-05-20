@@ -5,6 +5,8 @@ in float v_eye_z;
 uniform float u_sphere_radius;
 uniform float u_proj22;   // proj[2][2]
 uniform float u_proj32;   // proj[3][2]
+uniform vec3  u_base_color_lo;
+uniform vec3  u_base_color_hi;
 
 out vec4 frag;
 
@@ -29,7 +31,7 @@ void main() {
     float fres  = pow(1.0 - sphere_z, 3.0);
 
     float d    = clamp((v_density - 0.8) / 0.4, 0.0, 1.0);
-    vec3  base = mix(vec3(0.06, 0.28, 0.65), vec3(0.50, 0.82, 1.00), d);
+    vec3  base = mix(u_base_color_lo, u_base_color_hi, d);
     vec3  col  = base * (0.15 + 0.85 * diff);
     col = mix(col, vec3(0.85, 0.95, 1.00), fres * 0.4);
     col += vec3(spec * 0.55);

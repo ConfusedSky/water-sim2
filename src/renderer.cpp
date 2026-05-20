@@ -3,14 +3,12 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <string>
-#include <unistd.h>
-#include <limits.h>
+
+#include "pipeline.h"
 
 namespace {
 
@@ -23,23 +21,6 @@ namespace {
             std::exit(1);                                                      \
         }                                                                      \
     } while (0)
-
-std::string exe_dir() {
-    char buf[PATH_MAX];
-    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    if (n <= 0) return ".";
-    buf[n] = '\0';
-    std::string p(buf);
-    auto slash = p.find_last_of('/');
-    return (slash == std::string::npos) ? "." : p.substr(0, slash);
-}
-
-std::string shaders_dir() {
-    if (const char* env = std::getenv("SHADERS_DIR")) {
-        if (env[0] != '\0') return env;
-    }
-    return exe_dir() + "/shaders";
-}
 
 }  // namespace
 
@@ -66,43 +47,62 @@ glm::mat4 Camera::proj(float aspect) const {
 // Renderer
 // ---------------------------------------------------------------------------
 
+Renderer::Renderer() = default;
+
 Renderer::~Renderer() {
     shutdown();
 }
 
 bool Renderer::init(int particle_capacity) {
-    glGenVertexArrays(1, &vao_);
+    particle_capacity_ = particle_capacity;
+
     glGenBuffers(1, &vbo_);
-    glBindVertexArray(vao_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glBufferData(GL_ARRAY_BUFFER,
                  particle_capacity * sizeof(float) * 4,
                  nullptr, GL_DYNAMIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(float) * 4, nullptr);
-    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     CUDA_CHECK(cudaGraphicsGLRegisterBuffer(&cuda_vbo_, vbo_,
                                             cudaGraphicsRegisterFlagsNone));
-
-    std::string dir = shaders_dir();
-    std::string vs_path = dir + "/particle.vert";
-    std::string fs_path = dir + "/particle.frag";
-    std::printf("shaders: %s\n", dir.c_str());
-    if (!shader_.load(vs_path, fs_path)) {
-        std::fprintf(stderr, "shader: initial load failed\n");
-        return false;
-    }
     return true;
 }
 
 void Renderer::shutdown() {
+    pipelines_.clear();
     if (cuda_vbo_) {
         cudaGraphicsUnregisterResource(cuda_vbo_);
         cuda_vbo_ = nullptr;
     }
     if (vbo_) { glDeleteBuffers(1, &vbo_); vbo_ = 0; }
-    if (vao_) { glDeleteVertexArrays(1, &vao_); vao_ = 0; }
+}
+
+bool Renderer::add_pipeline(std::unique_ptr<RenderPipeline> pipeline) {
+    if (!pipeline) return false;
+    if (!pipeline->init(vbo_, particle_capacity_)) {
+        std::fprintf(stderr, "renderer: pipeline '%s' init failed\n",
+                     pipeline->name());
+        return false;
+    }
+    pipelines_.push_back(std::move(pipeline));
+    return true;
+}
+
+const char* Renderer::pipeline_name(int i) const {
+    if (i < 0 || i >= static_cast<int>(pipelines_.size())) return "";
+    return pipelines_[i]->name();
+}
+
+void Renderer::set_active_pipeline(int i) {
+    if (i < 0 || i >= static_cast<int>(pipelines_.size())) return;
+    active_index_ = i;
+}
+
+RenderPipeline* Renderer::active_pipeline() {
+    if (pipelines_.empty()) return nullptr;
+    if (active_index_ < 0 ||
+        active_index_ >= static_cast<int>(pipelines_.size())) return nullptr;
+    return pipelines_[active_index_].get();
 }
 
 float4* Renderer::map_vbo() {
@@ -119,11 +119,7 @@ void Renderer::unmap_vbo() {
 }
 
 void Renderer::request_reload() {
-    if (shader_.reload()) {
-        std::printf("shaders: reloaded\n");
-    } else {
-        std::fprintf(stderr, "shaders: reload failed (keeping previous program)\n");
-    }
+    if (auto* p = active_pipeline()) p->reload_shaders();
 }
 
 void Renderer::draw(const Camera& cam, int particle_count, int w, int h,
@@ -133,27 +129,7 @@ void Renderer::draw(const Camera& cam, int particle_count, int w, int h,
     glClearColor(bg[0], bg[1], bg[2], 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    if (!shader_.valid()) return;
-
-    float aspect = (h > 0) ? static_cast<float>(w) / h : 1.0f;
-    glm::mat4 proj_mat = cam.proj(aspect);
-    glm::mat4 view_mat = cam.view();
-    glm::mat4 mvp      = proj_mat * view_mat;
-
-    glDisable(GL_BLEND);
-    shader_.use();
-    glUniformMatrix4fv(shader_.uniform("u_mv"),  1, GL_FALSE, glm::value_ptr(view_mat));
-    glUniformMatrix4fv(shader_.uniform("u_mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
-    glUniform1f(shader_.uniform("u_radius_world"),  kParticleRadius);
-    glUniform1f(shader_.uniform("u_proj11"),        proj_mat[1][1]);
-    glUniform1f(shader_.uniform("u_viewport_h"),    static_cast<float>(h));
-    glUniform1f(shader_.uniform("u_sphere_radius"), kParticleRadius);
-    glUniform1f(shader_.uniform("u_proj22"),        proj_mat[2][2]);
-    glUniform1f(shader_.uniform("u_proj32"),        proj_mat[3][2]);
-
-    glBindVertexArray(vao_);
-    glDrawArrays(GL_POINTS, 0, particle_count);
-    glBindVertexArray(0);
+    if (auto* p = active_pipeline()) p->draw(cam, particle_count, w, h);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
