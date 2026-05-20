@@ -18,6 +18,7 @@
 #include "particle_pipeline.h"
 #include "pipeline.h"
 #include "renderer.h"
+#include "screenspace_pipeline.h"
 
 #include <memory>
 
@@ -209,8 +210,8 @@ int main() {
         std::fprintf(stderr, "renderer.init failed\n");
         return 1;
     }
-    if (!renderer.add_pipeline(std::make_unique<ParticlePipeline>("particle 1")) ||
-        !renderer.add_pipeline(std::make_unique<ParticlePipeline>("particle 2"))) {
+    if (!renderer.add_pipeline(std::make_unique<ParticlePipeline>()) ||
+        !renderer.add_pipeline(std::make_unique<ScreenspacePipeline>())) {
         std::fprintf(stderr, "renderer: pipeline registration failed\n");
         return 1;
     }

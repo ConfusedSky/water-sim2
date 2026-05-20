@@ -81,6 +81,7 @@ add_executable(water_sim2
     src/renderer.cpp
     src/shader_program.cpp
     src/particle_pipeline.cpp
+    src/screenspace_pipeline.cpp
 )
 target_link_libraries(water_sim2 PRIVATE
     CUDA::cudart

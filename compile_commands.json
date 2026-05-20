@@ -1,217 +1,247 @@
 [
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_draw.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_draw.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_draw.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_draw.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_draw.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_draw.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_tables.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_tables.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_tables.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_tables.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_tables.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_tables.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_widgets.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_widgets.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_widgets.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_widgets.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/imgui_widgets.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/imgui_widgets.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_glfw.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_glfw.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_glfw.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_glfw.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_opengl3.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -g -std=gnu++17 -o CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_opengl3.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends/imgui_impl_opengl3.cpp",
   "output": "CMakeFiles/imgui_lib.dir/_deps/imgui-src/backends/imgui_impl_opengl3.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/main.cpp.o -c /home/masa/Documents/tests/water-sim2/src/main.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/main.cpp.o -c /home/masa/Documents/tests/water-sim2/src/main.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/src/main.cpp",
   "output": "CMakeFiles/water_sim2.dir/src/main.cpp.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/opt/cuda/bin/nvcc -forward-unknown-to-host-compiler  --options-file CMakeFiles/water_sim2.dir/includes_CUDA.rsp -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/masa/Documents/tests/water-sim2/src/kernel.cu -o CMakeFiles/water_sim2.dir/src/kernel.cu.o",
+  "command": "/opt/cuda/bin/nvcc -forward-unknown-to-host-compiler -ccbin=/usr/bin/g++-15  --options-file CMakeFiles/water_sim2.dir/includes_CUDA.rsp -g -std=c++17 \"--generate-code=arch=compute_89,code=[compute_89,sm_89]\" -x cu -c /home/masa/Documents/tests/water-sim2/src/kernel.cu -o CMakeFiles/water_sim2.dir/src/kernel.cu.o",
   "file": "/home/masa/Documents/tests/water-sim2/src/kernel.cu",
   "output": "CMakeFiles/water_sim2.dir/src/kernel.cu.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/scenes.cpp.o -c /home/masa/Documents/tests/water-sim2/src/scenes.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/scenes.cpp.o -c /home/masa/Documents/tests/water-sim2/src/scenes.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/src/scenes.cpp",
   "output": "CMakeFiles/water_sim2.dir/src/scenes.cpp.o"
 },
 {
+  "directory": "/home/masa/Documents/tests/water-sim2/build",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/scene_desc.cpp.o -c /home/masa/Documents/tests/water-sim2/src/scene_desc.cpp",
+  "file": "/home/masa/Documents/tests/water-sim2/src/scene_desc.cpp",
+  "output": "CMakeFiles/water_sim2.dir/src/scene_desc.cpp.o"
+},
+{
+  "directory": "/home/masa/Documents/tests/water-sim2/build",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/renderer.cpp.o -c /home/masa/Documents/tests/water-sim2/src/renderer.cpp",
+  "file": "/home/masa/Documents/tests/water-sim2/src/renderer.cpp",
+  "output": "CMakeFiles/water_sim2.dir/src/renderer.cpp.o"
+},
+{
+  "directory": "/home/masa/Documents/tests/water-sim2/build",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/shader_program.cpp.o -c /home/masa/Documents/tests/water-sim2/src/shader_program.cpp",
+  "file": "/home/masa/Documents/tests/water-sim2/src/shader_program.cpp",
+  "output": "CMakeFiles/water_sim2.dir/src/shader_program.cpp.o"
+},
+{
+  "directory": "/home/masa/Documents/tests/water-sim2/build",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/particle_pipeline.cpp.o -c /home/masa/Documents/tests/water-sim2/src/particle_pipeline.cpp",
+  "file": "/home/masa/Documents/tests/water-sim2/src/particle_pipeline.cpp",
+  "output": "CMakeFiles/water_sim2.dir/src/particle_pipeline.cpp.o"
+},
+{
+  "directory": "/home/masa/Documents/tests/water-sim2/build",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src -I/home/masa/Documents/tests/water-sim2/build/_deps/imgui-src/backends -I/home/masa/Documents/tests/water-sim2/build/_deps/nlohmann_json-src/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -g -std=gnu++17 -o CMakeFiles/water_sim2.dir/src/screenspace_pipeline.cpp.o -c /home/masa/Documents/tests/water-sim2/src/screenspace_pipeline.cpp",
+  "file": "/home/masa/Documents/tests/water-sim2/src/screenspace_pipeline.cpp",
+  "output": "CMakeFiles/water_sim2.dir/src/screenspace_pipeline.cpp.o"
+},
+{
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/context.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/context.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/context.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/context.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/init.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/init.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/init.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/init.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/input.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/input.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/input.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/input.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/input.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/input.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/monitor.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/monitor.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/monitor.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/monitor.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/platform.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/platform.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/platform.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/platform.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/platform.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/platform.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/vulkan.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/vulkan.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/vulkan.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/vulkan.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/vulkan.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/vulkan.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/window.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/window.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/window.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/window.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/egl_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/egl_context.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/egl_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/egl_context.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/egl_context.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/egl_context.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/osmesa_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/osmesa_context.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/osmesa_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/osmesa_context.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/osmesa_context.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/osmesa_context.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_init.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_init.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_init.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/null_init.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_monitor.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_monitor.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_monitor.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/null_monitor.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_window.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_window.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_window.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/null_window.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_joystick.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_joystick.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/null_joystick.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_joystick.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/null_joystick.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/null_joystick.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_module.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_module.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_module.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_module.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_module.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/posix_module.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_time.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_time.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_time.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_time.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_time.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/posix_time.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_thread.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_thread.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_thread.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_thread.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_thread.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/posix_thread.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_init.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_init.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_init.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/x11_init.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_monitor.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_monitor.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_monitor.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/x11_monitor.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_window.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/x11_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_window.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/x11_window.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/x11_window.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/xkb_unicode.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/xkb_unicode.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/xkb_unicode.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/xkb_unicode.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/xkb_unicode.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/xkb_unicode.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/glx_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/glx_context.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/glx_context.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/glx_context.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/glx_context.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/glx_context.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_init.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_init.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_init.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_init.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/wl_init.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_monitor.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_monitor.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_monitor.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_monitor.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/wl_monitor.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_window.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/wl_window.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_window.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/wl_window.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/wl_window.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/linux_joystick.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/linux_joystick.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/linux_joystick.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/linux_joystick.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/linux_joystick.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/linux_joystick.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src",
-  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_poll.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_poll.c",
+  "command": "/usr/bin/cc -DHAVE_MEMFD_CREATE -D_DEFAULT_SOURCE -D_GLFW_WAYLAND -D_GLFW_X11 -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/include -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src -I/home/masa/Documents/tests/water-sim2/build/_deps/glfw-build/src -g -std=c99 -fPIC -Wall -o CMakeFiles/glfw.dir/posix_poll.c.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_poll.c",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glfw-src/src/posix_poll.c",
   "output": "_deps/glfw-build/src/CMakeFiles/glfw.dir/posix_poll.c.o"
 },
 {
   "directory": "/home/masa/Documents/tests/water-sim2/build/_deps/glm-build/glm",
-  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -std=c++17 -o CMakeFiles/glm.dir/detail/glm.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glm-src/glm/detail/glm.cpp",
+  "command": "/usr/bin/c++  -I/home/masa/Documents/tests/water-sim2/build/_deps/glm-src -g -std=c++17 -o CMakeFiles/glm.dir/detail/glm.cpp.o -c /home/masa/Documents/tests/water-sim2/build/_deps/glm-src/glm/detail/glm.cpp",
   "file": "/home/masa/Documents/tests/water-sim2/build/_deps/glm-src/glm/detail/glm.cpp",
   "output": "_deps/glm-build/glm/CMakeFiles/glm.dir/detail/glm.cpp.o"
 }

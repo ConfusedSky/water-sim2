@@ -3,15 +3,15 @@
 #include "pipeline.h"
 #include "shader_program.h"
 
-class ParticlePipeline : public RenderPipeline {
+class ScreenspacePipeline : public RenderPipeline {
 public:
-    explicit ParticlePipeline();
-    ~ParticlePipeline() override;
+    explicit ScreenspacePipeline();
+    ~ScreenspacePipeline() override;
 
-    ParticlePipeline(const ParticlePipeline&)            = delete;
-    ParticlePipeline& operator=(const ParticlePipeline&) = delete;
+    ScreenspacePipeline(const ScreenspacePipeline&)            = delete;
+    ScreenspacePipeline& operator=(const ScreenspacePipeline&) = delete;
 
-    const char* name() const override { return "particle"; }
+    const char* name() const override { return "screenspace"; }
 
     bool init(GLuint shared_vbo, int particle_capacity) override;
     void shutdown() override;
