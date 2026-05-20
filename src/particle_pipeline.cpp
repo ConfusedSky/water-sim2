@@ -49,12 +49,11 @@ void ParticlePipeline::draw(const Camera& cam, int particle_count, int w, int h)
     shader_.use();
     glUniformMatrix4fv(shader_.uniform("u_mv"),  1, GL_FALSE, glm::value_ptr(view_mat));
     glUniformMatrix4fv(shader_.uniform("u_mvp"), 1, GL_FALSE, glm::value_ptr(mvp));
-    glUniform1f(shader_.uniform("u_radius_world"),  Renderer::kParticleRadius);
-    glUniform1f(shader_.uniform("u_proj11"),        proj_mat[1][1]);
-    glUniform1f(shader_.uniform("u_viewport_h"),    static_cast<float>(h));
-    glUniform1f(shader_.uniform("u_sphere_radius"), Renderer::kParticleRadius);
-    glUniform1f(shader_.uniform("u_proj22"),        proj_mat[2][2]);
-    glUniform1f(shader_.uniform("u_proj32"),        proj_mat[3][2]);
+    glUniform1f(shader_.uniform("u_particle_radius"), Renderer::kParticleRadius);
+    glUniform1f(shader_.uniform("u_proj11"),          proj_mat[1][1]);
+    glUniform1f(shader_.uniform("u_viewport_h"),      static_cast<float>(h));
+    glUniform1f(shader_.uniform("u_proj22"),          proj_mat[2][2]);
+    glUniform1f(shader_.uniform("u_proj32"),          proj_mat[3][2]);
     glUniform3fv(shader_.uniform("u_base_color_lo"), 1, base_color_lo_);
     glUniform3fv(shader_.uniform("u_base_color_hi"), 1, base_color_hi_);
 
