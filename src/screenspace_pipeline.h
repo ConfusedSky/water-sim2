@@ -20,8 +20,8 @@ public:
     void draw_imgui_options() override;
 
 private:
-    GLuint        vao_    = 0;
+    GLuint        vao_         = 0;
     ShaderProgram shader_;
-    float         base_color_lo_[3] = {0.06f, 0.28f, 0.65f};
-    float         base_color_hi_[3] = {0.50f, 0.82f, 1.00f};
+    float         depth_near_  = 0.5f;
+    float         depth_far_   = 25.0f;
 };

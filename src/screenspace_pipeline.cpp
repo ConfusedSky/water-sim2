@@ -23,8 +23,8 @@ bool ScreenspacePipeline::init(GLuint shared_vbo, int /*particle_capacity*/) {
     glBindVertexArray(0);
 
     std::string dir = shaders_dir();
-    std::string vs_path = dir + "/particle.vert";
-    std::string fs_path = dir + "/particle.frag";
+    std::string vs_path = dir + "/screenspace.vert";
+    std::string fs_path = dir + "/screenspace.frag";
     if (!shader_.load(vs_path, fs_path)) {
         std::fprintf(stderr, "shader: initial load failed for pipeline '%s'\n",
                      name());
@@ -50,8 +50,8 @@ void ScreenspacePipeline::draw(const Camera& cam, int particle_count, int w, int
     glUniformMatrix4fv(shader_.uniform("u_proj"), 1, GL_FALSE, glm::value_ptr(proj_mat));
     glUniform1f(shader_.uniform("u_particle_radius"), Renderer::kParticleRadius);
     glUniform1f(shader_.uniform("u_viewport_h"),      static_cast<float>(h));
-    glUniform3fv(shader_.uniform("u_base_color_lo"), 1, base_color_lo_);
-    glUniform3fv(shader_.uniform("u_base_color_hi"), 1, base_color_hi_);
+    glUniform1f(shader_.uniform("u_depth_near"),      depth_near_);
+    glUniform1f(shader_.uniform("u_depth_far"),       depth_far_);
 
     glBindVertexArray(vao_);
     glDrawArrays(GL_POINTS, 0, particle_count);
@@ -69,6 +69,8 @@ void ScreenspacePipeline::reload_shaders() {
 }
 
 void ScreenspacePipeline::draw_imgui_options() {
-    ImGui::ColorEdit3("base color (low density)",  base_color_lo_);
-    ImGui::ColorEdit3("base color (high density)", base_color_hi_);
+    ImGui::PushItemWidth(120.0f);
+    ImGui::InputFloat("depth near", &depth_near_, 0, 0, "%.3f");
+    ImGui::InputFloat("depth far",  &depth_far_,  0, 0, "%.3f");
+    ImGui::PopItemWidth();
 }
