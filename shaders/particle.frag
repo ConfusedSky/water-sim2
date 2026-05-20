@@ -3,8 +3,7 @@ in float v_density;
 in float v_eye_z;
 
 uniform float u_particle_radius;
-uniform float u_proj22;   // proj[2][2]
-uniform float u_proj32;   // proj[3][2]
+uniform mat4  u_proj;
 uniform vec3  u_base_color_lo;
 uniform vec3  u_base_color_hi;
 
@@ -20,7 +19,7 @@ void main() {
 
     // Correct fragment depth to sphere surface
     float eye_z  = v_eye_z + u_particle_radius * sphere_z;
-    float ndc_z  = (u_proj22 * eye_z + u_proj32) / (-eye_z);
+    float ndc_z  = (u_proj[2][2] * eye_z + u_proj[3][2]) / (-eye_z);
     gl_FragDepth = ndc_z * 0.5 + 0.5;
 
     // Phong
