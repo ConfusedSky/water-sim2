@@ -1,6 +1,7 @@
 #version 450 core
 in float v_density;
 in float v_eye_z;
+in float v_r_norm;
 
 uniform float u_particle_radius;
 uniform mat4  u_proj;
@@ -10,8 +11,11 @@ uniform vec3  u_base_color_hi;
 out vec4 frag;
 
 void main() {
-    vec2  uv = gl_PointCoord * 2.0 - 1.0;
-    float r2 = dot(uv, uv);
+    // Re-normalize the sprite's [-1, 1] coords into the *actual* sphere's
+    // [-1, 1] so the disc boundary tracks the continuous projected radius
+    // (v_r_norm), not the rasterized sprite footprint.
+    vec2  uv   = (gl_PointCoord * 2.0 - 1.0) / v_r_norm;
+    float r2   = dot(uv, uv);
     if (r2 > 1.0) discard;
 
     float sphere_z = sqrt(1.0 - r2);
