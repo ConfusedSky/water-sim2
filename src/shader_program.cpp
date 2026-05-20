@@ -1,11 +1,24 @@
 #include "shader_program.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <limits.h>
 
 namespace {
+
+std::string exe_dir() {
+    char buf[PATH_MAX];
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) return ".";
+    buf[n] = '\0';
+    std::string p(buf);
+    auto slash = p.find_last_of('/');
+    return (slash == std::string::npos) ? "." : p.substr(0, slash);
+}
 
 bool read_file(const std::string& path, std::string& out) {
     std::ifstream f(path);
@@ -53,6 +66,13 @@ GLuint link(GLuint vs, GLuint fs) {
 }
 
 }  // namespace
+
+std::string shaders_dir() {
+    if (const char* env = std::getenv("SHADERS_DIR")) {
+        if (env[0] != '\0') return env;
+    }
+    return exe_dir() + "/shaders";
+}
 
 ShaderProgram::~ShaderProgram() {
     if (program_) glDeleteProgram(program_);

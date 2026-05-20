@@ -6,6 +6,10 @@
 #include <unordered_map>
 #include <sys/types.h>
 
+// Returns the directory shaders should be loaded from. Honors $SHADERS_DIR;
+// otherwise falls back to "<exe-dir>/shaders".
+std::string shaders_dir();
+
 class ShaderProgram {
 public:
     ShaderProgram() = default;
