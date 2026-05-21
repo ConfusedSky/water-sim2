@@ -48,7 +48,7 @@ void ScreenspacePipeline::draw(const Camera& cam, int particle_count, int w, int
     shader_.use();
     glUniformMatrix4fv(shader_.uniform("u_mv"),   1, GL_FALSE, glm::value_ptr(view_mat));
     glUniformMatrix4fv(shader_.uniform("u_proj"), 1, GL_FALSE, glm::value_ptr(proj_mat));
-    glUniform1f(shader_.uniform("u_particle_radius"), Renderer::kParticleRadius);
+    glUniform1f(shader_.uniform("u_particle_radius"), particle_radius_);
     glUniform1f(shader_.uniform("u_viewport_h"),      static_cast<float>(h));
     glUniform1f(shader_.uniform("u_depth_near"),      depth_near_);
     glUniform1f(shader_.uniform("u_depth_far"),       depth_far_);
@@ -72,5 +72,6 @@ void ScreenspacePipeline::draw_imgui_options() {
     ImGui::PushItemWidth(120.0f);
     ImGui::InputFloat("depth near", &depth_near_, 0, 0, "%.3f");
     ImGui::InputFloat("depth far",  &depth_far_,  0, 0, "%.3f");
+    ImGui::InputFloat("particle_radius",  &particle_radius_,  0, 0, "%.3f");
     ImGui::PopItemWidth();
 }

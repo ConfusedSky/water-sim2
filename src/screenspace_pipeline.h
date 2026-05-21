@@ -20,8 +20,9 @@ public:
     void draw_imgui_options() override;
 
 private:
-    GLuint        vao_         = 0;
+    GLuint        vao_             = 0;
     ShaderProgram shader_;
-    float         depth_near_  = 0.5f;
-    float         depth_far_   = 25.0f;
+    float         depth_near_      = 0.5f;
+    float         depth_far_       = 25.0f;
+    float         particle_radius_ = Renderer::kParticleRadius;
 };
