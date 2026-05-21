@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <string>
 
+#include "imgui_widgets.h"
+
 ScreenspacePipeline::ScreenspacePipeline() {}
 
 ScreenspacePipeline::~ScreenspacePipeline() {
@@ -70,8 +72,8 @@ void ScreenspacePipeline::reload_shaders() {
 
 void ScreenspacePipeline::draw_imgui_options() {
     ImGui::PushItemWidth(120.0f);
-    ImGui::InputFloat("depth near", &depth_near_, 0, 0, "%.3f");
-    ImGui::InputFloat("depth far",  &depth_far_,  0, 0, "%.3f");
-    ImGui::InputFloat("particle_radius",  &particle_radius_,  0, 0, "%.3f");
+    ui::ProportionalDragFloat("depth near",      &depth_near_,      "%.3f");
+    ui::ProportionalDragFloat("depth far",       &depth_far_,       "%.3f");
+    ui::ProportionalDragFloat("particle_radius", &particle_radius_, "%.3f");
     ImGui::PopItemWidth();
 }

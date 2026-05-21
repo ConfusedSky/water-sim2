@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <deque>
 
+#include "imgui_widgets.h"
 #include "kernel.cuh"
 #include "particle_pipeline.h"
 #include "pipeline.h"
@@ -327,21 +328,20 @@ int main() {
             TunableParams tp = get_tunable_params();
             bool changed = false;
             ImGui::PushItemWidth(120.0f);
-            changed |= ImGui::InputFloat("rest density",  &tp.rest_density,  0, 0, "%.2f");
-            changed |= ImGui::InputFloat("kernel radius", &tp.kernel_radius, 0, 0, "%.4f");
+            changed |= ui::ProportionalDragFloat("rest density",       &tp.rest_density,       "%.2f");
+            changed |= ui::ProportionalDragFloat("kernel radius",      &tp.kernel_radius,      "%.4f");
             changed |= ImGui::InputInt("solver iterations", &tp.solver_iterations, 0, 0);
-            changed |= ImGui::InputFloat("lambda_epsilon",  &tp.lambda_epsilon,  0, 0, "%.2f");
-            changed |= ImGui::InputFloat("tensile_k",       &tp.tensile_k,       0, 0, "%.6f");
-            changed |= ImGui::InputFloat("tensile_n",       &tp.tensile_n,       0, 0, "%.3f");
-            changed |= ImGui::InputFloat("tensile_q",       &tp.tensile_q,       0, 0, "%.3f");
-            changed |= ImGui::InputFloat("gravity",         &tp.gravity,         0, 0, "%.3f");
-            changed |= ImGui::InputFloat("velocity damping",&tp.velocity_damping,0, 0, "%.4f");
-            changed |= ImGui::InputFloat("boundary bounce", &tp.boundary_bounce, 0, 0, "%.3f");
-            changed |= ImGui::InputFloat("viscosity_c (XSPH)", &tp.viscosity_c, 0, 0, "%.6f");
-            changed |= ImGui::InputFloat("vorticity_eps",   &tp.vorticity_eps,   0, 0, "%.6f");
-            changed |= ImGui::InputFloat("max speed",       &tp.max_speed,       0, 0, "%.3f");
-            changed |= ImGui::InputFloat("max pos correction", &tp.max_position_correction,
-                                         0, 0, "%.5f");
+            changed |= ui::ProportionalDragFloat("lambda_epsilon",     &tp.lambda_epsilon,     "%.2f");
+            changed |= ui::ProportionalDragFloat("tensile_k",          &tp.tensile_k,          "%.6f");
+            changed |= ui::ProportionalDragFloat("tensile_n",          &tp.tensile_n,          "%.3f");
+            changed |= ui::ProportionalDragFloat("tensile_q",          &tp.tensile_q,          "%.3f");
+            changed |= ui::ProportionalDragFloat("gravity",            &tp.gravity,            "%.3f");
+            changed |= ui::ProportionalDragFloat("velocity damping",   &tp.velocity_damping,   "%.4f");
+            changed |= ui::ProportionalDragFloat("boundary bounce",    &tp.boundary_bounce,    "%.3f");
+            changed |= ui::ProportionalDragFloat("viscosity_c (XSPH)", &tp.viscosity_c,        "%.6f");
+            changed |= ui::ProportionalDragFloat("vorticity_eps",      &tp.vorticity_eps,      "%.6f");
+            changed |= ui::ProportionalDragFloat("max speed",          &tp.max_speed,          "%.3f");
+            changed |= ui::ProportionalDragFloat("max pos correction", &tp.max_position_correction, "%.5f");
             ImGui::PopItemWidth();
             if (changed) set_tunable_params(tp);
 
