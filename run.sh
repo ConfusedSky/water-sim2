@@ -5,4 +5,5 @@
 set -e
 cd "$(dirname "$0")"
 exec env __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia \
+    SHADERS_DIR="$(pwd)/shaders" \
     ./build/water_sim2 "$@"
